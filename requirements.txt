@@ -1,0 +1,69 @@
+# ─────────────────────────────────────────────────────────
+# AI Document Intelligence System — Requirements
+# Python 3.10+ | Windows / Mac / Linux
+#
+# Install: pip install -r requirements.txt
+#
+# NOTES:
+#   - Do NOT install tensorflow or onnxruntime separately.
+#   - chromadb's built-in ONNX embedder is bypassed entirely —
+#     we use sentence-transformers instead (no ONNX needed).
+#   - langchain-text-splitters is the only LangChain package
+#     needed — no heavy langchain-community required.
+# ─────────────────────────────────────────────────────────
+
+# ── Document Parsing ──────────────────────────────────────
+pymupdf>=1.23.0                 # PDF parsing (PyMuPDF / fitz)
+python-docx>=1.1.0              # .docx Word files
+openpyxl>=3.1.0                 # .xlsx Excel files
+python-pptx>=0.6.21             # .pptx PowerPoint (bonus)
+
+# ── Vision Language Model API ─────────────────────────────
+openai>=1.30.0                  # OpenRouter uses OpenAI-compatible API
+Pillow>=10.0.0                  # Image handling
+
+# ── Chunking (LangChain) ──────────────────────────────────
+# Only the text-splitting sub-package — lightweight, no heavy deps
+langchain-text-splitters>=0.2.0
+
+# ── NLP & Embeddings ──────────────────────────────────────
+# sentence-transformers handles both embeddings AND the cross-encoder reranker.
+# It will install torch (CPU) automatically.
+# Do NOT install tensorflow — it conflicts on Windows.
+sentence-transformers>=2.7.0
+
+# ── Retrieval ─────────────────────────────────────────────
+# IMPORTANT: chromadb>=0.5 tries to load its built-in ONNX embedder
+# on import, which crashes on some Windows setups.
+# Our embedder.py passes embedding_function=None to bypass this.
+# The fix is in the code — chromadb version does NOT need to change.
+chromadb>=0.4.24
+rank-bm25>=0.2.2                # BM25 sparse keyword retrieval
+
+# ── Frontend ──────────────────────────────────────────────
+streamlit>=1.35.0
+
+# ── Utilities ─────────────────────────────────────────────
+python-dotenv>=1.0.0            # .env file reader
+loguru>=0.7.0                   # Clean logging
+tqdm>=4.66.0                    # Progress bars
+pandas>=2.0.0                   # Data handling
+numpy>=1.24.0
+
+# ── Optional: spaCy (not required anymore) ────────────────
+# spaCy is no longer used for chunking — LangChain replaced it.
+# You can still install it for the NER entity extractor.
+# spacy>=3.7.0
+# After install: python -m spacy download en_core_web_sm
+
+# ── Optional: OCR for scanned documents ───────────────────
+# Only needed if you have scanned PDFs with no text layer.
+# Large dependencies (~2 GB) — install only if needed.
+# paddlepaddle==2.6.2
+# paddleocr==2.8.1
+# opencv-python-headless>=4.8.0
+
+# ── Optional: RAGAs Evaluation ────────────────────────────
+# Install only after the main pipeline is working.
+# ragas>=0.1.0
+# datasets>=2.14.0

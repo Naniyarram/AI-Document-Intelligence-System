@@ -1,0 +1,80 @@
+# ─────────────────────────────────────────────────────────
+# configs/pipeline_config.yaml
+#
+# Pipeline configuration in YAML format.
+# These settings are for documentation/reference.
+# Actual values are read from .env via config.py
+#
+# Use this file to plan experiments:
+# e.g. "What happens if I change chunk_size to 256?"
+# ─────────────────────────────────────────────────────────
+
+models:
+  # LLM for text generation (free on OpenRouter)
+  llm: "mistralai/mistral-7b-instruct:free"
+
+  # VLM for visual content processing (free on OpenRouter)
+  vlm: "qwen/qwen-2.5-vl-7b-instruct:free"
+
+  # Embedding model (runs locally, ~80MB download)
+  embedder: "all-MiniLM-L6-v2"
+
+  # Cross-encoder reranker (runs locally, ~80MB download)
+  reranker: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+chunking:
+  # Target token count per chunk
+  # Smaller = more precise retrieval, more chunks
+  # Larger = more context per chunk, fewer chunks
+  chunk_size: 400
+
+  # Tokens to overlap between adjacent chunks
+  # Prevents losing context at chunk boundaries
+  chunk_overlap: 60
+
+retrieval:
+  # How many candidates each retrieval method returns
+  # before reranking
+  bm25_top_k: 15      # keyword candidates
+  dense_top_k: 15     # semantic candidates
+
+  # How many final results to send to the LLM
+  # 5 is usually the sweet spot (enough context, not too noisy)
+  reranker_top_k: 5
+
+generation:
+  # LLM temperature: 0 = deterministic, 1 = creative
+  # Keep low (0.1) for factual document Q&A
+  temperature: 0.1
+
+  # Max tokens in the LLM response
+  max_tokens: 1000
+
+  # Keep last N exchanges in conversation history
+  # Enables follow-up questions
+  history_window: 10
+
+# ── Experiment Configurations ─────────────────────────────
+# Use these to benchmark different settings:
+
+experiments:
+  baseline:
+    chunk_size: 400
+    chunk_overlap: 60
+    bm25_top_k: 15
+    dense_top_k: 15
+    reranker_top_k: 5
+
+  small_chunks:
+    chunk_size: 200
+    chunk_overlap: 40
+    bm25_top_k: 20
+    dense_top_k: 20
+    reranker_top_k: 5
+
+  large_chunks:
+    chunk_size: 800
+    chunk_overlap: 100
+    bm25_top_k: 10
+    dense_top_k: 10
+    reranker_top_k: 5

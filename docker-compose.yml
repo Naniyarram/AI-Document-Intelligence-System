@@ -1,0 +1,21 @@
+# ─────────────────────────────────────────────────────────
+# docker-compose.yml
+#
+# Easiest way to run with Docker:
+#   docker-compose up
+#
+# Make sure your .env file exists before running.
+# ─────────────────────────────────────────────────────────
+
+version: "3.8"
+
+services:
+  doc-intelligence:
+    build: .
+    ports:
+      - "8501:8501"        # Streamlit UI accessible at http://localhost:8501
+    env_file:
+      - .env               # Loads OPENROUTER_API_KEY and other settings
+    volumes:
+      - ./data:/app/data   # Persist ChromaDB index across container restarts
+    restart: unless-stopped
