@@ -111,7 +111,12 @@ class Embedder:
 
             logger.info(f"Loading embedding model: {Config.EMBEDDING_MODEL}")
             try:
-                return SentenceTransformer(Config.EMBEDDING_MODEL, local_files_only=True)
+                if Config.EMBEDDING_LOCAL_FILES_ONLY:
+                    return SentenceTransformer(
+                        Config.EMBEDDING_MODEL,
+                        local_files_only=True,
+                    )
+                return SentenceTransformer(Config.EMBEDDING_MODEL)
             except TypeError:
                 return SentenceTransformer(Config.EMBEDDING_MODEL)
         except Exception as e:
@@ -164,53 +169,66 @@ class Embedder:
 
         clean_name = self._clean_collection_name(collection_name)
 
-        # Delete the old collection if it exists
-        # (prevents duplicates when re-uploading the same file)
-        try:
-            self.chroma_client.delete_collection(clean_name)
-            logger.debug(f"Deleted existing collection: {clean_name}")
-        except Exception:
-            pass  # Didn't exist — that's fine
+        staging_name = self._staging_collection_name(clean_name)
 
-        # Create a NEW collection with embedding_function=None
+        try:
+            self.chroma_client.delete_collection(staging_name)
+        except Exception:
+            pass
+
+        # Create a staging collection with embedding_function=None.
         # This is the KEY LINE that prevents the ONNX error.
         # It tells ChromaDB: "Don't use your built-in embedder.
         # I will provide my own vectors."
         collection = self.chroma_client.create_collection(
-            name=clean_name,
+            name=staging_name,
             embedding_function=None,      # ← disables ONNX / built-in embedder
             metadata={"hnsw:space": "cosine"},  # cosine similarity for text
         )
 
-        # Compute embeddings using our sentence-transformers model
-        texts = [chunk.text for chunk in chunks]
-        logger.info(f"Embedding {len(texts)} chunks with {Config.EMBEDDING_MODEL}...")
+        try:
+            # Compute embeddings using our sentence-transformers model
+            texts = [chunk.text for chunk in chunks]
+            logger.info(f"Embedding {len(texts)} chunks with {Config.EMBEDDING_MODEL}...")
 
-        embeddings = self.model.encode(
-            texts,
-            show_progress_bar=True,
-            batch_size=32,
-            convert_to_numpy=True,
-        )
-
-        # Prepare IDs and metadata for ChromaDB
-        ids       = [f"{clean_name}_chunk_{i}" for i in range(len(chunks))]
-        metadatas = [chunk.to_metadata_dict() for chunk in chunks]
-
-        # Insert in batches of 100 (prevents memory issues on large docs)
-        batch_size = 100
-        for start in range(0, len(chunks), batch_size):
-            end = min(start + batch_size, len(chunks))
-            collection.add(
-                ids=ids[start:end],
-                embeddings=embeddings[start:end].tolist(),  # list of lists
-                documents=texts[start:end],
-                metadatas=metadatas[start:end],
+            embeddings = self.model.encode(
+                texts,
+                show_progress_bar=True,
+                batch_size=32,
+                convert_to_numpy=True,
             )
-            logger.debug(f"Indexed batch {start}–{end}")
 
-        logger.info(f"✅ Indexed {len(chunks)} chunks → collection '{clean_name}'")
-        return len(chunks)
+            # Prepare IDs and metadata for ChromaDB
+            ids       = [f"{clean_name}_chunk_{i}" for i in range(len(chunks))]
+            metadatas = [chunk.to_metadata_dict() for chunk in chunks]
+
+            # Insert in batches of 100 (prevents memory issues on large docs)
+            batch_size = 100
+            for start in range(0, len(chunks), batch_size):
+                end = min(start + batch_size, len(chunks))
+                collection.add(
+                    ids=ids[start:end],
+                    embeddings=embeddings[start:end].tolist(),  # list of lists
+                    documents=texts[start:end],
+                    metadatas=metadatas[start:end],
+                )
+                logger.debug(f"Indexed batch {start}-{end}")
+
+            # Swap the completed staging collection into place.
+            try:
+                self.chroma_client.delete_collection(clean_name)
+            except Exception:
+                pass
+            collection.modify(name=clean_name)
+
+            logger.info(f"Indexed {len(chunks)} chunks into collection '{clean_name}'")
+            return len(chunks)
+        except Exception:
+            try:
+                self.chroma_client.delete_collection(staging_name)
+            except Exception:
+                pass
+            raise
 
     def dense_search(
         self,
@@ -312,3 +330,8 @@ class Embedder:
         if len(clean) < 3:
             clean = clean + "doc"                       # ensure min length
         return clean.lower()
+
+    def _staging_collection_name(self, clean_name: str) -> str:
+        suffix = hashlib.sha1(clean_name.encode("utf-8")).hexdigest()[:8]
+        base = clean_name[:50].strip("-_") or "doc"
+        return f"{base}-stg-{suffix}"

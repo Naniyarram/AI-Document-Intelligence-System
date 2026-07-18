@@ -16,6 +16,7 @@
 import re
 from typing import List, Dict, Any
 from loguru import logger
+from config import Config
 
 
 class EntityExtractor:
@@ -33,6 +34,10 @@ class EntityExtractor:
 
     def _load_spacy(self):
         """Load spaCy NER model."""
+        if not Config.USE_SPACY_NER:
+            logger.info("spaCy NER disabled; using regex extraction")
+            return None
+
         try:
             import spacy
             nlp = spacy.load("en_core_web_sm")
@@ -86,7 +91,10 @@ class EntityExtractor:
         # These catch patterns spaCy might miss
 
         # Invoice numbers: INV-2024-0001, #12345, Invoice No. 9876
-        inv_pattern = r"\b(?:INV|INVOICE|PO|ORDER|REF|#)\s*[-:]?\s*\d{4,}\b"
+        inv_pattern = (
+            r"\b(?:INV|INVOICE|PO|ORDER|REF)\s*(?:NO\.?|NUMBER|#)?\s*[-:]?\s*"
+            r"[A-Z0-9-]{4,}\b|#\s*\d{4,}\b"
+        )
         entities["invoice_numbers"] = re.findall(inv_pattern, text, re.IGNORECASE)
 
         # Email addresses
@@ -98,7 +106,7 @@ class EntityExtractor:
         entities["phone_numbers"] = re.findall(phone_pattern, text)
 
         # Money amounts (if spaCy missed some)
-        money_pattern = r"(?:USD|INR|€|£|\$|Rs\.?)\s*[\d,]+(?:\.\d{2})?"
+        money_pattern = r"(?:USD|INR|EUR|GBP|€|£|\$|Rs\.?)\s*[\d,]+(?:\.\d{2})?"
         regex_money = re.findall(money_pattern, text)
         entities["money_amounts"].extend(regex_money)
 
@@ -131,14 +139,19 @@ class EntityExtractor:
         """
         import re
 
-        # Extract all monetary amounts
+        # Extract monetary-looking amounts. Requiring a currency marker or
+        # amount label avoids treating dates, IDs, and phone numbers as money.
         all_amounts = []
         for chunk in chunks:
             amounts = re.findall(
-                r"(?:USD|INR|€|£|\$|Rs\.?)?\s*([\d,]+(?:\.\d{2})?)",
-                chunk["text"]
+                r"(?:(?:USD|INR|EUR|GBP|€|£|\$|Rs\.?)\s*([\d,]+(?:\.\d{2})?)|"
+                r"(?:total|amount|subtotal|tax|balance|due)\D{0,20}"
+                r"([\d,]+(?:\.\d{2})?))",
+                chunk["text"],
+                flags=re.IGNORECASE,
             )
-            for amt in amounts:
+            for match in amounts:
+                amt = next((part for part in match if part), "")
                 try:
                     value = float(amt.replace(",", ""))
                     all_amounts.append({

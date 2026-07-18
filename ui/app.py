@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import streamlit as st
 import tempfile
 import time
+import html
 from pathlib import Path
 
 # Page Config 
@@ -138,6 +139,8 @@ def get_pipeline():
 # Sidebar
 
 def render_sidebar():
+    from config import Config
+
     with st.sidebar:
         st.markdown("""
         <div style='text-align:center; padding:20px 0;'>
@@ -157,17 +160,23 @@ def render_sidebar():
 
         uploaded_file = st.file_uploader(
             "Choose a file",
-            type=["pdf", "docx", "doc", "txt", "xlsx", "xls", "csv",
-                  "png", "jpg", "jpeg"],
-            help="Supported: PDF, Word, Excel, CSV, TXT, Images",
+            type=Config.SUPPORTED_FORMATS,
+            help=(
+                "Supported: PDF, Word, Excel, CSV, TXT, Images, PPTX. "
+                f"Max size: {Config.MAX_UPLOAD_MB} MB."
+            ),
         )
 
         if uploaded_file:
             size_mb = uploaded_file.size / (1024 * 1024)
             st.caption(f"{uploaded_file.name} ({size_mb:.1f} MB)")
 
-            if st.button("Index Document", type="primary",
-                         use_container_width=True):
+            if size_mb > Config.MAX_UPLOAD_MB:
+                st.error(
+                    f"File is too large. Limit: {Config.MAX_UPLOAD_MB} MB."
+                )
+            elif st.button("Index Document", type="primary",
+                           use_container_width=True):
                 _index_document(uploaded_file)
 
         st.divider()
@@ -235,6 +244,11 @@ def _index_document(uploaded_file):
 
     original_filename = uploaded_file.name
     suffix = Path(original_filename).suffix
+
+    from config import Config
+    if suffix.lower().lstrip(".") not in Config.SUPPORTED_FORMATS:
+        st.error(f"Unsupported file type: {suffix}")
+        return
 
     # Write uploaded bytes to a temp file so the parser can read it from disk
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
@@ -328,7 +342,8 @@ def render_main():
     # Active document banner
     st.markdown(
         f"<div class='info-card'>Current document: "
-        f"<strong style='color:#93C5FD;'>{st.session_state.active_doc}</strong>"
+        f"<strong style='color:#93C5FD;'>"
+        f"{html.escape(st.session_state.active_doc)}</strong>"
         f"</div>",
         unsafe_allow_html=True,
     )
@@ -354,38 +369,48 @@ def render_main():
 def _show_welcome_screen():
     st.markdown("""
     <div style='text-align:center; padding:60px 20px;'>
-        <h2 style='color:#94A3B8;'>Upload a document to get started</h2>
-        <p style='color:#64748B; max-width:500px; margin:0 auto;'>
-            Use the sidebar to upload a PDF, Word document, Excel file, CSV,
-            TXT, or image. The AI will index it and you can start asking questions.
+        <h2 style='color:#E2E8F0; font-weight: 700; font-size: 2.5rem; margin-bottom: 10px;'>Turn unstructured documents into structured intelligence.</h2>
+        <p style='color:#94A3B8; max-width:600px; margin:0 auto; font-size: 1.1rem; line-height: 1.6;'>
+            This system uses a multimodal RAG pipeline (BM25 + Dense + Cross-Encoder) to ingest 
+            PDFs, Word docs, Excel files, and scans. It extracts structured data, detects anomalies, 
+            and provides source-grounded answers.
         </p>
+    </div>
+    <div style='display: flex; justify-content: center; margin-bottom: 40px;'>
+        <div style='background: #1E293B; border: 1px dashed #3B82F6; border-radius: 12px; padding: 20px 40px; text-align: center;'>
+            <p style='color: #93C5FD; font-weight: bold; margin-bottom: 5px;'>← Upload your first document in the sidebar</p>
+            <small style='color: #64748B;'>Supports: PDF, DOCX, XLSX, CSV, PNG, JPG (Max 50MB)</small>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     st.markdown("---")
-    st.markdown("#### Example questions you can ask:")
+    st.markdown("<h4 style='text-align: center; color: #E2E8F0; margin-bottom: 20px;'>Suggested Capabilities to Test</h4>", unsafe_allow_html=True)
     cols = st.columns(3)
     examples = [
-        ("Contracts", [
-            "What are the termination clauses?",
-            "Who are the parties involved?",
-            "What is the payment schedule?",
+        ("Hybrid Retrieval & Q&A", [
+            "Upload a complex contract.",
+            "Ask about specific termination clauses.",
+            "Observe the LLM-as-a-judge faithfulness score and source citations."
         ]),
-        ("Invoices", [
-            "What is the total amount due?",
-            "Are there any unusual payments?",
-            "List all invoice dates and amounts",
+        ("Multimodal Understanding (VLM)", [
+            "Upload a scanned image or screenshot of a table.",
+            "Ask the system to summarize the visual data.",
+            "Qwen2.5-VL processes the image seamlessly."
         ]),
-        ("Reports", [
-            "Summarize the key findings",
-            "What are the main risks mentioned?",
-            "What recommendations are made?",
+        ("Structured Extraction & Anomalies", [
+            "Upload an invoice or financial spreadsheet.",
+            "Switch to the **Extract** tab to pull entities.",
+            "Switch to **Anomaly Review** to find statistical outliers."
         ]),
     ]
     for col, (title, qs) in zip(cols, examples):
         with col:
-            st.markdown(f"**{title}**")
+            st.markdown(f"<div class='info-card' style='height: 100%;'>", unsafe_allow_html=True)
+            st.markdown(f"<strong style='color:#3B82F6;'>{title}</strong>", unsafe_allow_html=True)
+            st.markdown("<ul style='color:#94A3B8; font-size:14px; padding-left: 20px;'>", unsafe_allow_html=True)
             for q in qs:
-                st.caption(f"• {q}")
+                st.markdown(f"<li>{q}</li>", unsafe_allow_html=True)
+            st.markdown("</ul></div>", unsafe_allow_html=True)
 
 
 # Q&A Tab
@@ -403,14 +428,16 @@ def render_qa_tab():
         for msg in st.session_state.chat_history:
             if msg["role"] == "user":
                 st.markdown(
-                    f"<div class='chat-user'><strong>You</strong><br><br>{msg['content']}</div>",
+                    f"<div class='chat-user'><strong>You</strong><br><br>"
+                    f"{html.escape(msg['content'])}</div>",
                     unsafe_allow_html=True,
                 )
             else:
+                safe_content = html.escape(msg["content"]).replace("\n", "<br>")
                 st.markdown(
                     f"<div class='chat-assistant'>"
                     f"<strong style='color:#93C5FD;'>Assistant</strong><br><br>"
-                    f"{msg['content']}"
+                    f"{safe_content}"
                     f"</div>",
                     unsafe_allow_html=True,
                 )

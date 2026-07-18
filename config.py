@@ -59,6 +59,23 @@ def _clean(value: str) -> str:
     return value
 
 
+def _get_int(name: str, default: int, minimum: int = 1) -> int:
+    """Read a positive integer from the environment with a clear error."""
+    raw = _clean(os.getenv(name, str(default)))
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer, got {raw!r}") from exc
+    if value < minimum:
+        raise ValueError(f"{name} must be >= {minimum}, got {value}")
+    return value
+
+
+def _get_bool(name: str, default: bool = False) -> bool:
+    raw = _clean(os.getenv(name, str(default))).lower()
+    return raw in {"1", "true", "yes", "y", "on"}
+
+
 class Config:
     """
     Central config.  Import anywhere: from config import Config
@@ -75,7 +92,7 @@ class Config:
 
     DEFAULT_HF_LLM: str = "meta-llama/Llama-3.1-8B-Instruct"
     DEFAULT_HF_VLM: str = "Qwen/Qwen2.5-VL-7B-Instruct"
-    DEFAULT_OR_LLM: str = "mistralai/mistral-7b-instruct:free"
+    DEFAULT_OR_LLM: str = "meta-llama/llama-3.3-70b-instruct"
     DEFAULT_OR_VLM: str = "qwen/qwen-2.5-vl-7b-instruct:free"
 
     #Auto-detect which backend to use
@@ -124,13 +141,21 @@ class Config:
     UPLOAD_DIR:     str = str(_base / "data" / "uploads")
 
     #  Chunking 
-    CHUNK_SIZE:    int = int(_clean(os.getenv("CHUNK_SIZE",    "400")))
-    CHUNK_OVERLAP: int = int(_clean(os.getenv("CHUNK_OVERLAP", "60")))
+    CHUNK_SIZE:    int = _get_int("CHUNK_SIZE", 400)
+    CHUNK_OVERLAP: int = _get_int("CHUNK_OVERLAP", 60, minimum=0)
 
     #  Retrieval
-    BM25_TOP_K:     int = int(_clean(os.getenv("BM25_TOP_K",     "15")))
-    DENSE_TOP_K:    int = int(_clean(os.getenv("DENSE_TOP_K",    "15")))
-    RERANKER_TOP_K: int = int(_clean(os.getenv("RERANKER_TOP_K", "5")))
+    BM25_TOP_K:     int = _get_int("BM25_TOP_K", 15)
+    DENSE_TOP_K:    int = _get_int("DENSE_TOP_K", 15)
+    RERANKER_TOP_K: int = _get_int("RERANKER_TOP_K", 5)
+
+    # Runtime safeguards
+    MAX_UPLOAD_MB: int = _get_int("MAX_UPLOAD_MB", 25)
+    MAX_PDF_PAGES: int = _get_int("MAX_PDF_PAGES", 200)
+    USE_SPACY_NER: bool = _get_bool("USE_SPACY_NER", False)
+    EMBEDDING_LOCAL_FILES_ONLY: bool = _get_bool("EMBEDDING_LOCAL_FILES_ONLY", False)
+    RERANKER_LOCAL_FILES_ONLY: bool = _get_bool("RERANKER_LOCAL_FILES_ONLY", False)
+    ENABLE_LOCAL_LLM_FALLBACK: bool = _get_bool("ENABLE_LOCAL_LLM_FALLBACK", True)
 
     @classmethod
     def get_llm_model(cls) -> str:
@@ -156,8 +181,8 @@ class Config:
         if cls.get_backend_name() == "OpenRouter":
             return [
                 cls.DEFAULT_OR_LLM,
-                "meta-llama/llama-3.3-70b-instruct:free",
                 "google/gemma-3-27b-it:free",
+                "mistralai/mistral-7b-instruct:free",
             ]
         return [
             cls.DEFAULT_HF_LLM,
@@ -188,6 +213,13 @@ class Config:
     @classmethod
     def validate(cls) -> bool:
         """Check that at least one API key is configured."""
+        if cls.CHUNK_OVERLAP >= cls.CHUNK_SIZE:
+            print("[Config] Chunk overlap must be smaller than chunk size.")
+            return False
+        if cls.RERANKER_TOP_K > (cls.BM25_TOP_K + cls.DENSE_TOP_K):
+            print("[Config] RERANKER_TOP_K should not exceed the candidate pool.")
+            return False
+
         key = cls.get_api_key()
         if not key or key in ("hf_your_token_here", "sk-or-your-key-here", ""):
             print("[Config] ❌ No API key found.")

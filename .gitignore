@@ -1,22 +1,39 @@
+
+
+
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
 
-# Env
+# Virtual environments
+.venv/
+venv/
+
+# Environment
 .env
 
-# Data
-data/
-*.bin
-*.sqlite3
+# IDE
+.vscode/
+.idea/
 
-# Notebooks checkpoints
+# Runtime data
+data/chroma_db/
+data/uploads/*
+
+# Keep folder structure
+!data/uploads/.gitkeep
+
+# Databases
+*.sqlite3
+*.db
+
+# Binary artifacts
+*.bin
+
+# Notebook checkpoints
 .ipynb_checkpoints/
 
 # OS
 .DS_Store
 Thumbs.db
-
-
-__pycache__/
-*.pyc

@@ -130,6 +130,7 @@ class DocumentPipeline:
         # Stage 1: Load document
         self.progress_callback("Loading document...", 10)
         pages = self.loader.load(file_path)
+        self._normalize_page_sources(pages, filename)
         logger.info(f"Loaded {len(pages)} pages from {filename}")
 
         visual_pages = [p for p in pages if p.content_type in ("image", "scanned")]
@@ -168,6 +169,12 @@ class DocumentPipeline:
         self.progress_callback("Done! Document is ready to query.", 100)
         logger.info(f"Indexing complete: {summary}")
         return summary
+
+    def _normalize_page_sources(self, pages: list, filename: str) -> None:
+        """Keep user-facing source metadata stable even when parsing temp files."""
+        for page in pages:
+            page.source_file = filename
+            page.metadata["source"] = filename
 
     def _process_visual_pages(self, pages: list) -> list:
         """Run VLM or OCR on image/scanned pages, pass others through unchanged."""

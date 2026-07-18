@@ -22,7 +22,7 @@ os.environ["TOKENIZERS_PARALLELISM"]  = "false"  # suppress tokenizer warnings
 os.environ["TRANSFORMERS_VERBOSITY"]  = "error"  # suppress transformers info logs
 
 import warnings
-warnings.filterwarnings("ignore")  # suppress all Python warnings during setup
+warnings.filterwarnings("ignore",category=FutureWarning)  # suppress all Python warnings during setup
 
 
 def check_setup():
@@ -151,18 +151,49 @@ def check_setup():
 
 
 def run_app():
-    """Launch the Streamlit app."""
-    print("\n🚀 Starting AI Document Intelligence System...")
-    print("   Open in browser: http://localhost:8501")
-    print("   Press Ctrl+C to stop.\n")
+    """
+    Launch the Streamlit application.
 
-    subprocess.run([
-        sys.executable, "-m", "streamlit", "run",
-        os.path.join("ui", "app.py"),
-        "--server.headless=false",
-        "--browser.gatherUsageStats=false",
-        "--server.port=8501",
-    ])
+    Environment Variables:
+        PORT                -> Streamlit server port (default: 8501)
+        STREAMLIT_HEADLESS  -> true/false (default: true)
+    """
+    port = os.getenv("PORT", "8501")
+    headless = os.getenv("STREAMLIT_HEADLESS", "true").lower()
+
+    print("\n" + "=" * 60)
+    print("🚀 Starting AI Document Intelligence Platform")
+    print("=" * 60)
+    print(f"📍 Port      : {port}")
+    print(f"🖥️  Headless : {headless}")
+
+    if headless == "false":
+        print(f"🌐 URL       : http://localhost:{port}")
+
+    print("🛑 Press Ctrl+C to stop.\n")
+
+    try:
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "streamlit",
+                "run",
+                os.path.join("ui", "app.py"),
+                "--server.address=0.0.0.0",
+                f"--server.port={port}",
+                f"--server.headless={headless}",
+                "--browser.gatherUsageStats=false",
+            ],
+            check=True,
+        )
+
+    except KeyboardInterrupt:
+        print("\n🛑 Application stopped by user.")
+
+    except subprocess.CalledProcessError as e:
+        print(f"\n❌ Streamlit exited with error (code {e.returncode}).")
+        sys.exit(e.returncode)
 
 
 def run_tests():

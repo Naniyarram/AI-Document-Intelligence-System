@@ -24,6 +24,7 @@ class HybridRetriever:
     def __init__(self, embedder, chunks: list):
         self.embedder = embedder
         self.chunks   = chunks or []
+        self.bm25_chunks = []
 
         self.bm25_index = self._build_bm25(self.chunks)
         self.reranker   = self._load_reranker()
@@ -45,17 +46,27 @@ class HybridRetriever:
             from rank_bm25 import BM25Okapi
 
             # Tokenise every chunk text
-            tokenized = [chunk.text.lower().split() for chunk in chunks if chunk.text]
+            chunk_token_pairs = [
+                (chunk, chunk.text.lower().split())
+                for chunk in chunks
+                if chunk.text
+            ]
 
-            # Guard 2: filter out empty token lists
+            # Guard 2: filter out empty token lists while preserving alignment.
             # (blank chunk text produces [] which causes ZeroDivisionError)
-            tokenized = [tokens for tokens in tokenized if tokens]
+            chunk_token_pairs = [
+                (chunk, tokens)
+                for chunk, tokens in chunk_token_pairs
+                if tokens
+            ]
 
             # Guard 3: still nothing after filtering
-            if not tokenized:
+            if not chunk_token_pairs:
                 logger.warning("BM25: all chunks empty after tokenising — using dense-only")
                 return None
 
+            self.bm25_chunks = [chunk for chunk, _ in chunk_token_pairs]
+            tokenized = [tokens for _, tokens in chunk_token_pairs]
             index = BM25Okapi(tokenized)
             logger.info(f"BM25 index ready: {len(tokenized)} documents")
             return index
@@ -78,7 +89,13 @@ class HybridRetriever:
         try:
             from sentence_transformers import CrossEncoder
             try:
-                model = CrossEncoder(Config.RERANKER_MODEL, local_files_only=True)
+                if Config.RERANKER_LOCAL_FILES_ONLY:
+                    model = CrossEncoder(
+                        Config.RERANKER_MODEL,
+                        local_files_only=True,
+                    )
+                else:
+                    model = CrossEncoder(Config.RERANKER_MODEL)
             except TypeError:
                 model = CrossEncoder(Config.RERANKER_MODEL)
             logger.info(f"Reranker ready: {Config.RERANKER_MODEL}")
@@ -152,8 +169,8 @@ class HybridRetriever:
 
         results = []
         for idx in top_indices:
-            if idx < len(self.chunks) and float(scores[idx]) > 0:
-                chunk = self.chunks[idx]
+            if idx < len(self.bm25_chunks) and float(scores[idx]) > 0:
+                chunk = self.bm25_chunks[idx]
                 results.append({
                     "text":             chunk.text,
                     "score":            float(scores[idx]),

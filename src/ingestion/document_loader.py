@@ -17,6 +17,7 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import List, Optional
 from loguru import logger
+from config import Config
 
 
 @dataclass
@@ -63,6 +64,11 @@ class DocumentLoader:
         path = Path(file_path)
         extension = path.suffix.lower().lstrip(".")
 
+        if not path.exists():
+            raise FileNotFoundError(f"Document not found: {file_path}")
+        if extension not in Config.SUPPORTED_FORMATS:
+            raise ValueError(f"Unsupported file type: .{extension}")
+
         logger.info(f"Loading file: {path.name} (type: {extension})")
 
         # Route to the right parser based on file extension
@@ -101,7 +107,15 @@ class DocumentLoader:
         doc = fitz.open(file_path)
         filename = Path(file_path).name
 
-        for page_num in range(len(doc)):
+        page_count = len(doc)
+        if page_count > Config.MAX_PDF_PAGES:
+            doc.close()
+            raise ValueError(
+                f"PDF has {page_count} pages; the configured limit is "
+                f"{Config.MAX_PDF_PAGES} pages."
+            )
+
+        for page_num in range(page_count):
             page = doc[page_num]
 
             # Extract text from this page

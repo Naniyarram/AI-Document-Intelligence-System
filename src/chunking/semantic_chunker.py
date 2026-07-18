@@ -98,7 +98,7 @@ class SemanticChunker:
           - Falls back to spaces
           - Only splits mid-word as an absolute last resort
         """
-        from langchain.text_splitter import RecursiveCharacterTextSplitter
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
 
         return RecursiveCharacterTextSplitter(
             chunk_size=self._char_size,

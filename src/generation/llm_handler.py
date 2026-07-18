@@ -120,10 +120,14 @@ class LLMHandler:
 
         except Exception as e:
             logger.error(f"LLM generation failed: {e}")
-            fallback_answer = self._build_grounded_fallback_answer(
-                query=query,
-                retrieved_chunks=retrieved_chunks,
-                mode=mode,
+            fallback_answer = (
+                self._build_grounded_fallback_answer(
+                    query=query,
+                    retrieved_chunks=retrieved_chunks,
+                    mode=mode,
+                )
+                if Config.ENABLE_LOCAL_LLM_FALLBACK
+                else ""
             )
             if fallback_answer:
                 return {
@@ -244,7 +248,7 @@ class LLMHandler:
         return any(phrase in query_lower for phrase in overview_phrases)
 
     def _build_document_overview(self, retrieved_chunks: List[dict]) -> str:
-        """Create a concise structured overview from invoice/order-like text."""
+        """Create a concise extractive overview from retrieved chunks."""
         combined = "\n".join(chunk.get("text", "") for chunk in retrieved_chunks)
         if not combined.strip():
             return ""
@@ -255,77 +259,40 @@ class LLMHandler:
             f"p.{source_meta.get('page_number', '?')}"
         )
 
-        def find(pattern: str) -> str:
-            match = re.search(pattern, combined, flags=re.IGNORECASE | re.MULTILINE)
-            return re.sub(r"\s+", " ", match.group(1)).strip(" :#") if match else ""
+        normalized_lines = [
+            re.sub(r"\s+", " ", line).strip()
+            for line in combined.splitlines()
+        ]
+        candidate_lines = [
+            line for line in normalized_lines
+            if 25 <= len(line) <= 220
+        ]
 
-        doc_type = "document"
-        if re.search(r"\btax invoice\b", combined, flags=re.IGNORECASE):
-            doc_type = "tax invoice"
-        elif re.search(r"\binvoice\b", combined, flags=re.IGNORECASE):
-            doc_type = "invoice"
-
-        order_id = find(r"Order ID:\s*([A-Z0-9]+)")
-        invoice_number = find(r"Invoice Number\s*#?\s*([A-Z0-9]+)")
-        order_date = find(r"Order Date:\s*([0-9\-\/]+)")
-        invoice_date = find(r"Invoice Date:\s*([0-9\-\/]+)")
-        sold_by = find(r"Sold By:\s*(.+?)(?:,?\s*Ship-from Address:)")
-        grand_total = find(r"Grand Total\s*[^\d]*([0-9,.]+)")
-        total_items = find(r"Total items:\s*([0-9]+)")
-
-        product_names = []
-        for pattern in [
-            r"TELUGU\s+FOODS\s+Mango\s+Pickle",
-            r"Delish\s+by\s+Flipkart\s+Green\s+Chilli\s+Pickle",
-        ]:
-            match = re.search(pattern, combined, flags=re.IGNORECASE)
-            if match:
-                product_names.append(re.sub(r"\s+", " ", match.group(0)).strip())
-
-        if not product_names:
+        if not candidate_lines:
+            sentences = re.split(r"(?<=[.!?])\s+", re.sub(r"\s+", " ", combined))
             candidate_lines = [
-                re.sub(r"\s+", " ", line).strip()
-                for line in combined.splitlines()
+                sentence.strip()
+                for sentence in sentences
+                if 25 <= len(sentence.strip()) <= 220
             ]
-            for line in candidate_lines:
-                if len(line) < 4:
-                    continue
-                lower = line.lower()
-                if any(
-                    noise in lower
-                    for noise in ("return", "policy", "helpcentre", "grand total", "ship-from")
-                ):
-                    continue
-                if any(token in lower for token in ("pickle", "foods", "flipkart")):
-                    if line not in product_names:
-                        product_names.append(line)
-                if len(product_names) >= 3:
-                    break
 
-        lines = [f"This {doc_type} appears to be a Flipkart order invoice."]
-        if sold_by:
-            lines.append(f"- Seller: {sold_by}")
-        if order_id:
-            lines.append(f"- Order ID: {order_id}")
-        if invoice_number:
-            lines.append(f"- Invoice number: {invoice_number}")
-        if order_date or invoice_date:
-            date_text = " / ".join(
-                part for part in [
-                    f"Order date: {order_date}" if order_date else "",
-                    f"Invoice date: {invoice_date}" if invoice_date else "",
-                ] if part
-            )
-            lines.append(f"- Dates: {date_text}")
-        if total_items:
-            lines.append(f"- Total items: {total_items}")
-        if product_names:
-            lines.append(f"- Products: {', '.join(product_names[:3])}")
-        if grand_total:
-            lines.append(f"- Grand total: Rs. {grand_total}")
-        lines.append(
-            "- It also includes billing/shipping addresses, GST/tax details, and return-policy notes."
-        )
+        selected = []
+        seen = set()
+        for line in candidate_lines:
+            key = line.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            selected.append(line)
+            if len(selected) >= 5:
+                break
+
+        if not selected:
+            return ""
+
+        lines = ["Document overview from retrieved evidence:"]
+        for line in selected:
+            lines.append(f"- {line}")
         lines.append(f"Source: {source_label}")
         return "\n".join(lines)
 

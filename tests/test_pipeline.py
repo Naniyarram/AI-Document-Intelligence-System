@@ -133,8 +133,15 @@ class TestDocumentLoader:
 
     def test_unsupported_format_raises(self):
         """Unsupported file types should raise ValueError."""
-        with pytest.raises(ValueError, match="Unsupported"):
-            self.loader.load("document.xyz")
+        import tempfile
+        import os
+        with tempfile.NamedTemporaryFile(suffix=".xyz", delete=False) as tmp:
+            tmp_path = tmp.name
+        try:
+            with pytest.raises(ValueError, match="Unsupported"):
+                self.loader.load(tmp_path)
+        finally:
+            os.unlink(tmp_path)
 
     def test_looks_like_table(self):
         """Test the table detection heuristic."""
