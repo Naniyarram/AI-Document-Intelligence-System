@@ -1,6 +1,6 @@
 # AI Document Intelligence Platform
 
-[![Hugging Face Spaces](https://img.shields.io/badge/Live%20Demo-Hugging%20Face-blue?logo=huggingface)](https://huggingface.co/spaces/YOUR_HF_USERNAME/doc_intelligence)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **A production-oriented multimodal RAG system that turns complex business documents into grounded answers, structured insights, and review-ready signals.**
@@ -41,8 +41,8 @@ flowchart LR
 
 ## 🚀 Live Demo
 
-You can try the fully containerized application deployed on Hugging Face Spaces:  
-👉 **[Launch Live Demo](https://huggingface.co/spaces/YOUR_HF_USERNAME/doc_intelligence)**
+You can try the live application deployed on Streamlit Community Cloud:  
+👉 **[Launch Live Demo](https://share.streamlit.io/)**
 
 ---
 
