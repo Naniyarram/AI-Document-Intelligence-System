@@ -159,17 +159,14 @@ def run_app():
         STREAMLIT_HEADLESS  -> true/false (default: true)
     """
     port = os.getenv("PORT", "8501")
-    headless = os.getenv("STREAMLIT_HEADLESS", "true").lower()
+    headless = os.getenv("STREAMLIT_HEADLESS", "false").lower()
 
     print("\n" + "=" * 60)
     print("🚀 Starting AI Document Intelligence Platform")
     print("=" * 60)
     print(f"📍 Port      : {port}")
     print(f"🖥️  Headless : {headless}")
-
-    if headless == "false":
-        print(f"🌐 URL       : http://localhost:{port}")
-
+    print(f"🌐 URL       : http://localhost:{port} (Click this if the browser doesn't open)")
     print("🛑 Press Ctrl+C to stop.\n")
 
     try:
