@@ -177,7 +177,6 @@ def run_app():
                 "streamlit",
                 "run",
                 os.path.join("ui", "app.py"),
-                "--server.address=0.0.0.0",
                 f"--server.port={port}",
                 f"--server.headless={headless}",
                 "--browser.gatherUsageStats=false",

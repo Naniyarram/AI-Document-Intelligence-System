@@ -1,12 +1,7 @@
 
 # Benchmark: BM25 vs Dense vs Hybrid Retrieval
 
-# This script proves that hybrid retrieval is better.
 
-
-# What it measures:
-#   - How many relevant chunks each method finds
-#   - How the methods complement each other
 
 
 import sys

@@ -9,8 +9,6 @@ from config import Config
 from src.ingestion.document_loader import DocumentPage
 
 
-# One prompt per visual content type.
-# These tell the VLM exactly what to extract and how to format it.
 PROMPTS = {
     "image": (
         "This is an image from a document. Extract ALL information visible in it.\n"

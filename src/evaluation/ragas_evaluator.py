@@ -10,10 +10,6 @@
 #   - Context Recall:    Did retrieval find the right chunks?
 #   - Context Precision: Are the retrieved chunks actually relevant?
 
-
-
-
-
 from typing import List, Dict, Optional
 from loguru import logger
 

@@ -1,16 +1,5 @@
 
 # config.py — Central Configuration
-#-------------------------------------------------------------------------------
-# Supports two API backends:
-#   1. HuggingFace Inference Providers  (token starts with hf_)
-#      Base URL: https://router.huggingface.co/v1
-#      Models:   HuggingFace model IDs (e.g. meta-llama/...)
-
-#   2. OpenRouter  (token starts with sk-or-)
-#      Base URL: https://openrouter.ai/api/v1
-#      Models:   OpenRouter model IDs (e.g. mistralai/mistral-7b-instruct:free)
-
-# The code auto-detects which backend to use based on the token prefix.
 
 
 import os

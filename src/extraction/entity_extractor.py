@@ -10,7 +10,6 @@
 #   - Contract-specific: parties, terms, clauses
 #   - Document-specific patterns via regex
 
-# Uses spaCy's NER model (runs locally, no API needed).
 
 
 import re
