@@ -16,8 +16,8 @@ Pillow>=10.0.0                  # Image handling
 langchain-text-splitters>=0.2.0
 
 # NLP & Embeddings
-
 sentence-transformers>=2.7.0
+torchvision                     # Required by transformers image processing (Streamlit file watcher bug)
 
 # Retrieval 
 
