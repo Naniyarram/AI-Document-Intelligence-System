@@ -81,8 +81,8 @@ class Config:
 
     DEFAULT_HF_LLM: str = "meta-llama/Llama-3.1-8B-Instruct"
     DEFAULT_HF_VLM: str = "Qwen/Qwen2.5-VL-7B-Instruct"
-    DEFAULT_OR_LLM: str = "meta-llama/llama-3.3-70b-instruct"
-    DEFAULT_OR_VLM: str = "qwen/qwen-2.5-vl-7b-instruct:free"
+    DEFAULT_OR_LLM: str = "google/gemini-2.0-flash-lite-preview-02-05:free"
+    DEFAULT_OR_VLM: str = "google/gemini-2.0-flash-lite-preview-02-05:free"
 
     #Auto-detect which backend to use
     # Priority: HF_TOKEN > OPENROUTER_API_KEY
@@ -170,7 +170,7 @@ class Config:
         if cls.get_backend_name() == "OpenRouter":
             return [
                 cls.DEFAULT_OR_LLM,
-                "google/gemma-3-27b-it:free",
+                "google/gemini-2.0-flash-exp:free",
                 "mistralai/mistral-7b-instruct:free",
             ]
         return [
@@ -185,7 +185,7 @@ class Config:
         if cls.get_backend_name() == "OpenRouter":
             return [
                 cls.DEFAULT_OR_VLM,
-                "meta-llama/llama-3.2-11b-vision-instruct:free",
+                "google/gemini-2.0-flash-exp:free",
             ]
         return [
             cls.DEFAULT_HF_VLM,
