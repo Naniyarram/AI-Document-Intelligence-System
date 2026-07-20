@@ -379,11 +379,11 @@ class LLMHandler:
 
     @staticmethod
     def _is_model_unavailable_error(error: Exception) -> bool:
-        """Identify provider errors that mean the model ID is unsupported."""
+        """Identify provider errors that mean the model ID is unsupported or rate limited."""
         message = str(error).lower()
         return any(
             clue in message
-            for clue in ("404", "model", "not found", "does not exist", "unavailable")
+            for clue in ("404", "429", "model", "not found", "does not exist", "unavailable", "rate", "upstream")
         )
 
     def reset_conversation(self):
