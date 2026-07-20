@@ -185,7 +185,6 @@ class Config:
         if cls.get_backend_name() == "OpenRouter":
             return [
                 cls.DEFAULT_OR_VLM,
-                "openrouter/free",
             ]
         return [
             cls.DEFAULT_HF_VLM,
