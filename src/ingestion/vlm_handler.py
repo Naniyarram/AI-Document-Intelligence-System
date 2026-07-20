@@ -159,7 +159,14 @@ class VLMHandler:
                         f"Configured VLM '{self.model}' unavailable; switched to '{model_name}'"
                     )
                     self.model = model_name
-                return response.choices[0].message.content.strip()
+                if not getattr(response, "choices", None):
+                    raise ValueError(f"Provider returned no choices for model {model_name}")
+                
+                content = response.choices[0].message.content
+                if content is None:
+                    raise ValueError(f"Provider returned empty content for model {model_name}")
+                    
+                return content.strip()
             except Exception as exc:
                 last_error = exc
                 if not self._is_model_unavailable_error(exc):
