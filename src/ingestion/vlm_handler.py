@@ -100,6 +100,18 @@ class VLMHandler:
 
         except Exception as e:
             logger.error(f"VLM failed on page {page.page_number}: {e}")
+            
+            # Fallback to local OCR if VLM fails
+            ocr = OCRHandler()
+            if ocr.available:
+                logger.info(f"Falling back to local OCR for page {page.page_number}")
+                ocr_text = ocr.extract(page.image_bytes)
+                if ocr_text.strip():
+                    page.text = ocr_text.strip()
+                    page.metadata["vlm_processed"] = False
+                    page.metadata["ocr_fallback"] = True
+                    return page
+                    
             # Use a placeholder so the chunk is still indexed (not lost)
             page.text                   = f"[Visual content — VLM extraction failed: {str(e)}]"
             page.metadata["vlm_failed"] = True
@@ -196,7 +208,7 @@ class VLMHandler:
 
 class OCRHandler:
     """
-    Local OCR fallback using PaddleOCR.
+    Local OCR fallback using Tesseract.
 
     Used when VLM is unavailable or for very simple scanned pages
     where raw text extraction (without visual understanding) is enough.
@@ -211,38 +223,29 @@ class OCRHandler:
 
     def __init__(self):
         try:
-            from paddleocr import PaddleOCR
-            # use_angle_cls=True handles rotated/upside-down text
-            self.ocr       = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
+            import pytesseract
             self.available = True
-            logger.info("PaddleOCR ready (local OCR fallback)")
+            logger.info("Tesseract OCR ready (local OCR fallback)")
         except ImportError:
             self.available = False
             logger.info(
-                "PaddleOCR not installed — OCR fallback unavailable.\n"
-                "To enable: pip install paddlepaddle paddleocr"
+                "pytesseract not installed — OCR fallback unavailable.\n"
+                "To enable: pip install pytesseract"
             )
 
     def extract(self, image_bytes: bytes) -> str:
         """Extract raw text from image bytes using OCR."""
         if not self.available:
-            return "[OCR unavailable — install paddleocr for scanned document support]"
+            return "[OCR unavailable — install pytesseract for scanned document support]"
 
-        import numpy as np
-        import cv2
+        try:
+            import pytesseract
+            from PIL import Image
+            import io
 
-        # Decode bytes to an OpenCV image array
-        nparr  = np.frombuffer(image_bytes, np.uint8)
-        img    = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        result = self.ocr.ocr(img, cls=True)
-
-        if not result or not result[0]:
+            img = Image.open(io.BytesIO(image_bytes))
+            text = pytesseract.image_to_string(img)
+            return text.strip()
+        except Exception as e:
+            logger.error(f"Tesseract OCR failed: {e}")
             return ""
-
-        # Each result entry is [bounding_box, (text, confidence)]
-        lines = [
-            line[1][0]
-            for line in result[0]
-            if line and len(line) > 1
-        ]
-        return "\n".join(lines)
