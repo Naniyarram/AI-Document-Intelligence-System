@@ -5,6 +5,8 @@
 
 **A production-oriented multimodal RAG system that turns complex business documents into grounded answers, structured insights, and review-ready signals.**
 
+Live demo: [Launch the deployed app](https://ai-document-platform.streamlit.app/) to test document Q&A, retrieval, and grounded answer generation.
+
 ---
 
 ## 📖 The Engineering Story
