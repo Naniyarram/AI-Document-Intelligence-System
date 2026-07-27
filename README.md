@@ -1,6 +1,6 @@
 # AI Document Intelligence Platform
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ai-document-platform.streamlit.app/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **A production-oriented multimodal RAG system that turns complex business documents into grounded answers, structured insights, and review-ready signals.**
@@ -42,7 +42,7 @@ flowchart LR
 ## 🚀 Live Demo
 
 You can try the live application deployed on Streamlit Community Cloud:  
-👉 **[Launch Live Demo](https://share.streamlit.io/)**
+👉 **[Launch Live Demo](https://ai-document-platform.streamlit.app/)**
 
 ---
 
@@ -62,8 +62,8 @@ You can try the live application deployed on Streamlit Community Cloud:
 
 1. **Clone and Setup Virtual Environment:**
 ```bash
-git clone https://github.com/YOUR_USERNAME/doc_intelligence.git
-cd doc_intelligence
+git clone https://github.com/Naniyarram/ai-document-intelligence-system.git
+cd ai-document-intelligence-system
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
