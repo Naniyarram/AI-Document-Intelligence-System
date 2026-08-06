@@ -63,7 +63,6 @@ def run_retrieval_benchmark(document_name: str, test_queries: list):
         # Get unique texts found by each method
         bm25_texts = set(r["text"][:80] for r in bm25_results)
         dense_texts = set(r["text"][:80] for r in dense_results)
-        hybrid_texts = set(r["text"][:80] for r in hybrid_results)
 
         # Count unique results per method
         only_in_bm25 = bm25_texts - dense_texts

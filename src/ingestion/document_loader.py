@@ -173,11 +173,6 @@ class DocumentLoader:
     def _pdf_page_to_image(self, page) -> bytes:
         """Render a PDF page as a PNG image (for VLM processing)."""
         # Render at 150 DPI — good enough for VLM, not too heavy
-        matrix = page._parent.get_page_pixmap(
-            page.number,
-            matrix=page._parent.get_page_pixmap.__module__
-        ) if False else None
-
         # Simpler approach using fitz directly
         mat = __import__("fitz").Matrix(150 / 72, 150 / 72)  # 150 DPI
         pix = page.get_pixmap(matrix=mat)

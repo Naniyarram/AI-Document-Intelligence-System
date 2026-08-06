@@ -223,7 +223,7 @@ class OCRHandler:
 
     def __init__(self):
         try:
-            import pytesseract
+            import pytesseract  # noqa: F401
             self.available = True
             logger.info("Tesseract OCR ready (local OCR fallback)")
         except ImportError:

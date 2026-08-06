@@ -12,8 +12,6 @@ def profile_pipeline():
     print("  RAG Pipeline Latency Profiler")
     print("="*60)
 
-    start_total = time.time()
-
     # 1. Initialize Pipeline
     t0 = time.time()
     pipeline = DocumentPipeline()
@@ -38,7 +36,7 @@ def profile_pipeline():
     # 3. Query Execution (Non-Streaming)
     query = "What is the total fee amount?"
     t0 = time.time()
-    result = pipeline.query(query, mode="qa")
+    pipeline.query(query, mode="qa")
     t1 = time.time()
     print(f"[Query (Sync)] Full pipeline end-to-end: {t1-t0:.2f}s")
 

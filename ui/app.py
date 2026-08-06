@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 # ui/app.py — Streamlit Frontend
 #
 # Run with: streamlit run ui/app.py
@@ -370,8 +371,8 @@ def _show_welcome_screen():
     <div style='text-align:center; padding:60px 20px;'>
         <h2 style='color:#E2E8F0; font-weight: 700; font-size: 2.5rem; margin-bottom: 10px;'>Turn unstructured documents into structured intelligence.</h2>
         <p style='color:#94A3B8; max-width:600px; margin:0 auto; font-size: 1.1rem; line-height: 1.6;'>
-            This system uses a multimodal RAG pipeline (BM25 + Dense + Cross-Encoder) to ingest 
-            PDFs, Word docs, Excel files, and scans. It extracts structured data, detects anomalies, 
+            This system uses a multimodal RAG pipeline (BM25 + Dense + Cross-Encoder) to ingest
+            PDFs, Word docs, Excel files, and scans. It extracts structured data, detects anomalies,
             and provides source-grounded answers.
         </p>
     </div>

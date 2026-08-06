@@ -47,7 +47,7 @@ class RAGAsEvaluator:
     def _check_ragas(self) -> bool:
         """Check if RAGAs is installed."""
         try:
-            import ragas
+            import ragas  # noqa: F401
             return True
         except ImportError:
             logger.warning(
