@@ -45,7 +45,7 @@ class TextChunk:
             else:
                 base[k] = str(v)  # convert everything else to string
         return base
-
+    
 
 class SemanticChunker:
     """

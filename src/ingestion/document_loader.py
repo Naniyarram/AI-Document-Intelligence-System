@@ -511,3 +511,4 @@ class DocumentLoader:
 
         # If more than 30% of lines look table-like, call it a table
         return (pipe_lines / total_lines > 0.3) or (tab_lines / total_lines > 0.3)
+    

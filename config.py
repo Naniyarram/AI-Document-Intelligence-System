@@ -79,6 +79,9 @@ class Config:
     HF_API_KEY:         str = _clean(os.getenv("HF_API_KEY",         ""))
     OPENROUTER_API_KEY: str = _clean(os.getenv("OPENROUTER_API_KEY", ""))
 
+
+
+
     DEFAULT_HF_LLM: str = "meta-llama/Llama-3.1-8B-Instruct"
     DEFAULT_HF_VLM: str = "Qwen/Qwen2.5-VL-7B-Instruct"
     DEFAULT_OR_LLM: str = "google/gemma-4-31b-it:free"
