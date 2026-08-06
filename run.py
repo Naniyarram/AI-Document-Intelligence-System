@@ -13,7 +13,7 @@ import os
 import subprocess
 import argparse
 
-# Suppress noisy warnings before any imports 
+# Suppress noisy warnings before any imports
 # These environment variables silence TensorFlow and other
 # libraries that print warnings even when not being used.
 os.environ["TF_CPP_MIN_LOG_LEVEL"]    = "3"   # suppress TF C++ logs
@@ -50,7 +50,7 @@ def check_setup():
         print("     Then open .env and add your API key.")
         all_ok = False
 
-    #  2. Check API key 
+    #  2. Check API key
     from config import Config
 
     # key = Config.API_KEY
@@ -119,9 +119,9 @@ def check_setup():
         except ImportError:
             print(f"  ⚠️  {pkg_name:<30} not installed (optional but recommended)")
             print(f"       Install: pip install {pkg_name}")
-            print(f"       Then:    python -m spacy download en_core_web_sm")
+            print("       Then:    python -m spacy download en_core_web_sm")
 
-    #  5. Check spaCy model 
+    #  5. Check spaCy model
     print()
     try:
         import spacy
@@ -133,7 +133,7 @@ def check_setup():
         print("  ⚠️  spaCy model not downloaded yet")
         print("       Fix: python -m spacy download en_core_web_sm")
 
-    # Final result 
+    # Final result
     print()
     print("=" * 55)
     if all_ok:

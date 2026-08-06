@@ -20,11 +20,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import streamlit as st
 import tempfile
-import time
 import html
 from pathlib import Path
 
-# Page Config 
+# Page Config
 st.set_page_config(
     page_title="AI Document Intelligence",
     layout="wide",
@@ -181,7 +180,7 @@ def render_sidebar():
 
         st.divider()
 
-        #  Indexed Documents 
+        #  Indexed Documents
         st.markdown("#### Indexed Documents")
 
         pipeline = get_pipeline()
@@ -212,13 +211,13 @@ def render_sidebar():
 
         st.divider()
 
-        # Pipeline Status 
+        # Pipeline Status
         st.markdown("#### Pipeline Status")
         _show_pipeline_status()
 
         st.divider()
 
-        # Config 
+        # Config
         with st.expander("Configuration"):
             from config import Config
             st.caption(f"**Backend:** `{Config.get_backend_name()}`")
@@ -405,7 +404,7 @@ def _show_welcome_screen():
     ]
     for col, (title, qs) in zip(cols, examples):
         with col:
-            st.markdown(f"<div class='info-card' style='height: 100%;'>", unsafe_allow_html=True)
+            st.markdown("<div class='info-card' style='height: 100%;'>", unsafe_allow_html=True)
             st.markdown(f"<strong style='color:#3B82F6;'>{title}</strong>", unsafe_allow_html=True)
             st.markdown("<ul style='color:#94A3B8; font-size:14px; padding-left: 20px;'>", unsafe_allow_html=True)
             for q in qs:

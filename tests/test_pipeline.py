@@ -13,7 +13,7 @@ import pytest
 import tempfile
 
 
-#Test: SemanticChunker 
+#Test: SemanticChunker
 class TestSemanticChunker:
 
     def setup_method(self):
@@ -62,7 +62,6 @@ class TestSemanticChunker:
     def test_chunk_has_required_fields(self):
         """Each chunk must have all required metadata fields."""
         from src.ingestion.document_loader import DocumentPage
-        from src.chunking.semantic_chunker import TextChunk
         page = DocumentPage(
             source_file="contract.pdf",
             page_number=2,
@@ -78,7 +77,7 @@ class TestSemanticChunker:
         assert chunk.section_title == "Payment Terms"
 
 
-#  Test: EntityExtractor 
+#  Test: EntityExtractor
 class TestEntityExtractor:
 
     def setup_method(self):
@@ -108,7 +107,7 @@ class TestEntityExtractor:
         assert entities == {}
 
 
-# Test: DocumentLoader 
+# Test: DocumentLoader
 class TestDocumentLoader:
 
     def setup_method(self):

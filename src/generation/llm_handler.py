@@ -363,11 +363,11 @@ class LLMHandler:
                     self.model = model_name
                 if not getattr(response, "choices", None):
                     raise ValueError(f"Provider returned no choices for model {model_name}")
-                
+
                 content = response.choices[0].message.content
                 if content is None:
                     raise ValueError(f"Provider returned empty content for model {model_name}")
-                    
+
                 return content.strip()
             except Exception as exc:
                 last_error = exc

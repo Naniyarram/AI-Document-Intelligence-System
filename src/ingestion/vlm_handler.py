@@ -76,7 +76,7 @@ class VLMHandler:
         rest of the pipeline can continue without crashing.
         """
         if page.image_bytes is None:
-            logger.warning(f"VLM.process called on page with no image — skipping")
+            logger.warning("VLM.process called on page with no image — skipping")
             return page
 
         # Pick the most appropriate prompt for this content type
@@ -100,7 +100,7 @@ class VLMHandler:
 
         except Exception as e:
             logger.error(f"VLM failed on page {page.page_number}: {e}")
-            
+
             # Fallback to local OCR if VLM fails
             ocr = OCRHandler()
             if ocr.available:
@@ -111,7 +111,7 @@ class VLMHandler:
                     page.metadata["vlm_processed"] = False
                     page.metadata["ocr_fallback"] = True
                     return page
-                    
+
             # Use a placeholder so the chunk is still indexed (not lost)
             page.text                   = f"[Visual content — VLM extraction failed: {str(e)}]"
             page.metadata["vlm_failed"] = True
@@ -173,11 +173,11 @@ class VLMHandler:
                     self.model = model_name
                 if not getattr(response, "choices", None):
                     raise ValueError(f"Provider returned no choices for model {model_name}")
-                
+
                 content = response.choices[0].message.content
                 if content is None:
                     raise ValueError(f"Provider returned empty content for model {model_name}")
-                    
+
                 return content.strip()
             except Exception as exc:
                 last_error = exc

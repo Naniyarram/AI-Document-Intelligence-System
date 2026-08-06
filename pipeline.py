@@ -102,7 +102,7 @@ class DocumentPipeline:
             self._extractor = EntityExtractor()
         return self._extractor
 
- 
+
     # STAGE 1-4: Index a Document
 
     def index(self, file_path: str, original_filename: str = None) -> dict:
@@ -189,9 +189,9 @@ class DocumentPipeline:
             processed.append(page)
         return processed
 
-   
+
     # STAGE 5-6: Query
-    
+
     def query(
         self,
         question: str,
@@ -365,7 +365,7 @@ class DocumentPipeline:
             logger.warning(f"Could not rebuild chunks from ChromaDB: {e}")
             return []
 
-    
+
     # Utility Methods
 
 

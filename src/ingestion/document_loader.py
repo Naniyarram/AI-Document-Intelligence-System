@@ -11,8 +11,6 @@
 #   - scanned page (sent to OCR later)
 
 
-import os
-import io
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import List, Optional
@@ -89,9 +87,9 @@ class DocumentLoader:
         else:
             raise ValueError(f"Unsupported file type: .{extension}")
 
-   
+
     # PDF Parser
-  
+
     def _load_pdf(self, file_path: str) -> List[DocumentPage]:
         """
         Parse PDF pages.
@@ -186,7 +184,7 @@ class DocumentLoader:
         return pix.tobytes("png")
 
     # DOCX Parser
- 
+
     def _load_docx(self, file_path: str) -> List[DocumentPage]:
         """
         Parse Word documents.
@@ -410,7 +408,7 @@ class DocumentLoader:
 
         return pages
 
-  
+
     # TXT Parser
 
     def _load_txt(self, file_path: str) -> List[DocumentPage]:
@@ -464,7 +462,7 @@ class DocumentLoader:
 
 
     # PPTX Parser
- 
+
     def _load_pptx(self, file_path: str) -> List[DocumentPage]:
         """Parse PowerPoint files slide by slide."""
         from pptx import Presentation
@@ -495,7 +493,7 @@ class DocumentLoader:
         return pages
 
     # Helper Methods
- 
+
     def _looks_like_table(self, text: str) -> bool:
         """
         Quick heuristic: does this text look like a table?
@@ -511,4 +509,3 @@ class DocumentLoader:
 
         # If more than 30% of lines look table-like, call it a table
         return (pipe_lines / total_lines > 0.3) or (tab_lines / total_lines > 0.3)
-    

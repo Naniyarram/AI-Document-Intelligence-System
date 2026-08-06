@@ -10,7 +10,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from pipeline import DocumentPipeline
 from src.retrieval.hybrid_retriever import HybridRetriever
-from config import Config
 
 
 def run_retrieval_benchmark(document_name: str, test_queries: list):
@@ -19,7 +18,7 @@ def run_retrieval_benchmark(document_name: str, test_queries: list):
     Prints a comparison table showing what each method finds.
     """
     print(f"\n{'='*60}")
-    print(f"  Retrieval Method Benchmark")
+    print("  Retrieval Method Benchmark")
     print(f"  Document: {document_name}")
     print(f"  Queries: {len(test_queries)}")
     print(f"{'='*60}\n")
@@ -98,7 +97,7 @@ def run_retrieval_benchmark(document_name: str, test_queries: list):
             "dense_unique": len(only_in_dense),
         })
 
-    #  Summary Table 
+    #  Summary Table
     print(f"\n{'='*60}")
     print("  Summary Table")
     print(f"{'='*60}")
@@ -116,7 +115,7 @@ def run_retrieval_benchmark(document_name: str, test_queries: list):
     print("Add these results to your README for a strong portfolio showing.\n")
 
 
-#  Sample usage 
+#  Sample usage
 if __name__ == "__main__":
 
     # Replace with your actual document name and relevant queries

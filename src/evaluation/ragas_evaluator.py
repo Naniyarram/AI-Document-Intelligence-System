@@ -10,7 +10,7 @@
 #   - Context Recall:    Did retrieval find the right chunks?
 #   - Context Precision: Are the retrieved chunks actually relevant?
 
-from typing import List, Dict, Optional
+from typing import List, Dict
 from loguru import logger
 
 
@@ -190,16 +190,16 @@ class RAGAsEvaluator:
         print(f"  Questions evaluated: {results.get('num_questions', 0)}")
         print()
         print(f"  Faithfulness:       {scores.get('faithfulness', 0):.1%}")
-        print(f"    → Are answers grounded in the document?")
+        print("    → Are answers grounded in the document?")
         print()
         print(f"  Answer Relevancy:   {scores.get('answer_relevancy', 0):.1%}")
-        print(f"    → Do answers address the question?")
+        print("    → Do answers address the question?")
         print()
         print(f"  Context Recall:     {scores.get('context_recall', 0):.1%}")
-        print(f"    → Did retrieval find the right chunks?")
+        print("    → Did retrieval find the right chunks?")
         print()
         print(f"  Context Precision:  {scores.get('context_precision', 0):.1%}")
-        print(f"    → Are retrieved chunks relevant?")
+        print("    → Are retrieved chunks relevant?")
         print("═" * 50)
 
         # Overall health check

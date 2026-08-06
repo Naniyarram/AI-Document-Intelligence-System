@@ -132,7 +132,7 @@ class Config:
     CHROMA_DB_PATH: str = str(_base / "data" / "chroma_db")
     UPLOAD_DIR:     str = str(_base / "data" / "uploads")
 
-    #  Chunking 
+    #  Chunking
     CHUNK_SIZE:    int = _get_int("CHUNK_SIZE", 400)
     CHUNK_OVERLAP: int = _get_int("CHUNK_OVERLAP", 60, minimum=0)
 
@@ -194,7 +194,7 @@ class Config:
             "meta-llama/Llama-3.2-11B-Vision-Instruct",
         ]
 
-    # App 
+    # App
     SUPPORTED_FORMATS: list = [
         "pdf", "docx", "doc", "txt",
         "xlsx", "xls", "csv",

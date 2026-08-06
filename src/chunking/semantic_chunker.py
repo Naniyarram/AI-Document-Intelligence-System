@@ -45,7 +45,7 @@ class TextChunk:
             else:
                 base[k] = str(v)  # convert everything else to string
         return base
-    
+
 
 class SemanticChunker:
     """
@@ -137,7 +137,7 @@ class SemanticChunker:
             if not page.text or not page.text.strip():
                 continue
 
-            # Tables & spreadsheets: NEVER split them 
+            # Tables & spreadsheets: NEVER split them
             # A table chunk that gets cut in half is useless.
             # Keep the entire table as a single retrievable unit.
             if page.content_type in ("table", "spreadsheet_row"):

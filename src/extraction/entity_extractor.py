@@ -69,7 +69,7 @@ class EntityExtractor:
             "other": []
         }
 
-        # spaCy NER 
+        # spaCy NER
         if self.nlp:
             doc = self.nlp(text[:100_000])  # spaCy limit
             for ent in doc.ents:
@@ -86,7 +86,7 @@ class EntityExtractor:
                 elif ent.label_ in ["PERCENT"]:
                     entities["percentages"].append(ent.text)
 
-        #  Regex Patterns 
+        #  Regex Patterns
         # These catch patterns spaCy might miss
 
         # Invoice numbers: INV-2024-0001, #12345, Invoice No. 9876

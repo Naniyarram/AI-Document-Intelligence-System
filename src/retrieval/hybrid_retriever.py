@@ -30,7 +30,7 @@ class HybridRetriever:
         self.reranker   = self._load_reranker()
 
     # BM25 Index Builder
- 
+
     def _build_bm25(self, chunks: list):
         """
         Build BM25 index.
@@ -83,7 +83,7 @@ class HybridRetriever:
             return None
 
     # Reranker Loader
-   
+
     def _load_reranker(self):
         """Load cross-encoder reranker. Returns None if unavailable."""
         try:
@@ -146,7 +146,7 @@ class HybridRetriever:
 
         return results
 
-  
+
     # Stage 1: BM25 Search
 
     def _bm25_search(self, query: str, top_k: int) -> List[dict]:
@@ -179,7 +179,7 @@ class HybridRetriever:
                 })
         return results
 
-  
+
     # Merge + Deduplicate
 
     def _merge(
@@ -209,7 +209,7 @@ class HybridRetriever:
 
         return merged
 
-    
+
     # Stage 3: Cross-Encoder Reranker
 
     def _rerank(
