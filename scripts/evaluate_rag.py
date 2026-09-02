@@ -1,31 +1,48 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 RAG Pipeline Evaluation Harness
 ================================
-Indexes a sample consulting agreement and evaluates the RAG pipeline
-against 15 ground-truth question-answer pairs.
+Evaluates the RAG pipeline against 15 ground-truth Q&A pairs.
 
-Metrics (deterministic — no LLM calls needed):
-  - Answer F1:          Token-level precision, recall, F1
-  - Key Fact Recall:    Fraction of critical facts present in the answer
-  - Context Relevance:  Token overlap between retrieved chunks and ground truth
+Tier 1 — Deterministic / Local (no LLM calls, runs offline):
+  - Answer Precision   : token-level, set-intersection based
+  - Answer Recall      : token-level, set-intersection based
+  - Answer F1          : harmonic mean of precision and recall
+  - Key Fact Recall    : exact substring match on critical facts
+  - Context Relevance  : token overlap between retrieved chunks and ground truth
 
-Optional (LLM-based — may fail under rate limits):
-  - Faithfulness:       LLM-as-judge grounding check
+NOTE: These are lightweight lexical-overlap metrics, NOT standard semantic
+benchmarks (BLEU/ROUGE/embedding-based). They serve as a reproducible baseline
+suitable for a GenAI portfolio project evaluated on a free-tier API.
 
-Outputs:
+Tier 2 — LLM-as-a-Judge (Faithfulness, Answer Relevancy):
+  NOT evaluated in this run. Requires the `ragas` + `datasets` packages
+  (not in requirements.txt) and would consume 60+ free-tier API calls per run
+  with no reliable rate-limit guarantee. Will be marked N/A in the output.
+
+Output:
   - Console table with per-question and aggregate results
-  - JSON report: scripts/evaluation_report.json
-  - Bar chart:   scripts/evaluation_chart.png
+  - JSON artifact: artifacts/evaluation/rag_evaluation_results.json
 
 Usage:
     python scripts/evaluate_rag.py
 """
 
-# ── PyTorch pre-initialisation (Windows DLL pattern) ─────
+# ── Force UTF-8 output on Windows (avoids cp1252 UnicodeEncodeError) ─────────
+import sys as _sys
+import io as _io
+if hasattr(_sys.stdout, "reconfigure"):
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    _sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+else:
+    _sys.stdout = _io.TextIOWrapper(_sys.stdout.buffer, encoding="utf-8", errors="replace")
+    _sys.stderr = _io.TextIOWrapper(_sys.stderr.buffer, encoding="utf-8", errors="replace")
+
+# ── PyTorch / Windows DLL pre-init ───────────────────────────────────────────
 try:
-    from sentence_transformers import SentenceTransformer
-    _ = SentenceTransformer
+    from sentence_transformers import SentenceTransformer as _ST
+    _ = _ST
 except ImportError:
     pass
 
@@ -33,16 +50,18 @@ import sys
 import os
 import json
 import time
+import re
 import tempfile
 import statistics
 
+# Add project root so pipeline imports resolve correctly
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from pipeline import DocumentPipeline  # noqa: E402
 
-# ─────────────────────────────────────────────────────────
-#  Sample Document (Consulting Agreement)
-# ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+#  Sample Document
+# ─────────────────────────────────────────────────────────────────────────────
 SAMPLE_DOCUMENT = (
     "CONSULTING AGREEMENT\n\n"
     "This Consulting Agreement (the 'Agreement') is entered into as of January 15, 2024, "
@@ -87,9 +106,9 @@ SAMPLE_DOCUMENT = (
     "Invoice Reference: INV-2024-0341\n"
 )
 
-# ─────────────────────────────────────────────────────────
-#  Evaluation Set — 15 questions
-# ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+#  15 Ground-Truth Evaluation Pairs
+# ─────────────────────────────────────────────────────────────────────────────
 EVALUATION_SET = [
     {
         "id": "Q01",
@@ -148,7 +167,10 @@ EVALUATION_SET = [
     {
         "id": "Q10",
         "question": "What services does the consultant provide?",
-        "ground_truth": "Strategic advisory services for digital transformation including technology assessment, roadmap development, vendor evaluation, and change management.",
+        "ground_truth": (
+            "Strategic advisory services for digital transformation including technology "
+            "assessment, roadmap development, vendor evaluation, and change management."
+        ),
         "key_facts": ["digital transformation", "technology", "roadmap", "vendor"],
     },
     {
@@ -184,32 +206,46 @@ EVALUATION_SET = [
 ]
 
 
-# ─────────────────────────────────────────────────────────
-#  Metric Functions (deterministic — no LLM calls)
-# ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+#  Metric Functions (Tier 1 — Deterministic, zero LLM calls)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _tokenize(text: str) -> set:
+    """Lowercase, remove punctuation, return set of tokens."""
+    return set(re.sub(r"[^\w\s]", "", text.lower()).split())
+
 
 def compute_f1(prediction: str, ground_truth: str) -> dict:
-    """Compute token-level precision, recall, and F1."""
-    pred_tokens = set(prediction.lower().split())
-    truth_tokens = set(ground_truth.lower().split())
+    """
+    Token-level Precision, Recall, F1.
+
+    Method: set-intersection of lowercased, punctuation-stripped tokens.
+    This is a lexical baseline — not equivalent to ROUGE-1 (which uses
+    counts, not sets) or embedding-based semantic similarity.
+    """
+    pred_tokens  = _tokenize(prediction)
+    truth_tokens = _tokenize(ground_truth)
 
     if not pred_tokens or not truth_tokens:
         return {"precision": 0.0, "recall": 0.0, "f1": 0.0}
 
-    common = pred_tokens & truth_tokens
-    precision = len(common) / len(pred_tokens) if pred_tokens else 0.0
-    recall = len(common) / len(truth_tokens) if truth_tokens else 0.0
-    f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+    common    = pred_tokens & truth_tokens
+    precision = len(common) / len(pred_tokens)
+    recall    = len(common) / len(truth_tokens)
+    f1        = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
 
     return {
         "precision": round(precision, 4),
-        "recall": round(recall, 4),
-        "f1": round(f1, 4),
+        "recall":    round(recall,    4),
+        "f1":        round(f1,        4),
     }
 
 
 def compute_key_fact_recall(answer: str, key_facts: list) -> float:
-    """Check what fraction of key facts appear in the answer."""
+    """
+    Exact substring match of critical facts in the generated answer.
+    Fraction of key_facts found → [0.0, 1.0].
+    """
     if not key_facts:
         return 1.0
     answer_lower = answer.lower()
@@ -218,244 +254,265 @@ def compute_key_fact_recall(answer: str, key_facts: list) -> float:
 
 
 def compute_context_relevance(retrieved_texts: list, ground_truth: str) -> float:
-    """Token overlap between retrieved chunks and ground truth."""
+    """
+    Token overlap between the retrieved chunk texts and the ground-truth answer.
+    Measures whether the retriever surfaced the relevant passage.
+    """
     if not retrieved_texts:
         return 0.0
-    combined = " ".join(retrieved_texts).lower()
-    truth_tokens = set(ground_truth.lower().split())
-    combined_tokens = set(combined.split())
+    combined     = " ".join(retrieved_texts)
+    truth_tokens = _tokenize(ground_truth)
+    ctx_tokens   = _tokenize(combined)
     if not truth_tokens:
         return 0.0
-    overlap = truth_tokens & combined_tokens
+    overlap = truth_tokens & ctx_tokens
     return round(len(overlap) / len(truth_tokens), 4)
 
 
-# ─────────────────────────────────────────────────────────
-#  Chart Generation
-# ─────────────────────────────────────────────────────────
-
-def generate_chart(aggregate: dict, output_path: str):
-    """Generate a bar chart of aggregate metrics."""
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-
-        metrics = {
-            "Answer F1": aggregate["answer_f1"],
-            "Key Fact\nRecall": aggregate["key_fact_recall"],
-            "Context\nRelevance": aggregate["context_relevance"],
-        }
-
-        fig, ax = plt.subplots(figsize=(8, 4))
-        bars = ax.bar(
-            metrics.keys(),
-            metrics.values(),
-            color=["#3b82f6", "#10b981", "#8b5cf6"],
-            width=0.5,
-            edgecolor="white",
-            linewidth=1.5,
-        )
-
-        # Add value labels on bars
-        for bar, val in zip(bars, metrics.values()):
-            ax.text(
-                bar.get_x() + bar.get_width() / 2,
-                bar.get_height() + 0.02,
-                f"{val:.2f}",
-                ha="center", va="bottom",
-                fontsize=14, fontweight="bold",
-            )
-
-        ax.set_ylim(0, 1.15)
-        ax.set_ylabel("Score", fontsize=12)
-        ax.set_title("RAG Pipeline Evaluation — Deterministic Metrics", fontsize=14, fontweight="bold")
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-
-        plt.tight_layout()
-        plt.savefig(output_path, dpi=150, bbox_inches="tight")
-        plt.close()
-        print(f"  OK Chart saved to {output_path}")
-    except ImportError:
-        print("  WARN matplotlib not installed — skipping chart generation")
-    except Exception as e:
-        print(f"  WARN Chart generation failed: {e}")
-
-
-# ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 #  Main Evaluation Loop
-# ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 
 def run_evaluation():
-    """Run the full evaluation pipeline."""
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 64)
     print("  RAG Pipeline Evaluation Harness")
-    print("=" * 60)
+    print("=" * 64)
+    print(
+        "\n  Metric methodology: Tier 1 Deterministic (lexical-overlap).\n"
+        "  Faithfulness / Answer Relevancy (LLM-as-a-Judge) are NOT\n"
+        "  evaluated — ragas is not installed and would require 60+\n"
+        "  free-tier LLM calls with no rate-limit guarantee.\n"
+    )
 
-    # 1. Write sample document to a temp file
-    tmp_dir = tempfile.mkdtemp(prefix="rag_eval_")
+    # ── 1. Write sample document to a temp file ───────────────────────────
+    tmp_dir  = tempfile.mkdtemp(prefix="rag_eval_")
     tmp_file = os.path.join(tmp_dir, "consulting_agreement.txt")
-    with open(tmp_file, "w", encoding="utf-8") as f:
-        f.write(SAMPLE_DOCUMENT)
-    print(f"\n  OK Sample document written ({len(SAMPLE_DOCUMENT)} chars)")
+    with open(tmp_file, "w", encoding="utf-8") as fh:
+        fh.write(SAMPLE_DOCUMENT)
+    print(f"  ✓ Sample document written ({len(SAMPLE_DOCUMENT):,} chars)\n")
 
-    # 2. Initialise pipeline
-    print("  WAIT Initialising pipeline...")
+    # ── 2. Initialise pipeline ────────────────────────────────────────────
+    print("  ⏳ Initialising pipeline...")
     pipeline = DocumentPipeline()
-    print("  OK Pipeline ready")
+    print("  ✓ Pipeline ready\n")
 
-    # 3. Index the document
-    print("  WAIT Indexing document...")
+    # ── 3. Index the document ─────────────────────────────────────────────
     collection_name = "consulting_agreement.txt"
-    index_result = pipeline.index(tmp_file, original_filename=collection_name)
-    print(f"  OK Indexed: {index_result['total_chunks']} chunks in {index_result['processing_time_sec']}s\n")
+    print("  ⏳ Indexing document...")
+    idx = pipeline.index(tmp_file, original_filename=collection_name)
+    print(
+        f"  ✓ Indexed {idx['total_chunks']} chunks "
+        f"in {idx['processing_time_sec']}s\n"
+    )
 
-    # 4. Run evaluation queries
-    results = []
-    total = len(EVALUATION_SET)
+    # ── 4. Evaluation loop ────────────────────────────────────────────────
+    results       = []
+    total         = len(EVALUATION_SET)
+    failed_llm    = 0
+    succeeded_llm = 0
 
     for i, item in enumerate(EVALUATION_SET, 1):
-        q = item["question"]
-        gt = item["ground_truth"]
-        kf = item["key_facts"]
         qid = item["id"]
+        q   = item["question"]
+        gt  = item["ground_truth"]
+        kf  = item["key_facts"]
 
         q_display = q[:55] + "…" if len(q) > 55 else q
         print(f"  [{i:>2}/{total}] {qid}: {q_display}")
 
+        # ── LLM answer generation ─────────────────────────────────────
+        answer          = ""
+        llm_error       = None
+        retrieved_texts = []
+
+        for attempt in range(1, 4):
+            try:
+                response = pipeline.query(q, collection_name=collection_name)
+                answer   = response.get("answer", "")
+
+                # Detect LLM-level errors vs real answers
+                error_phrases = [
+                    "api authentication failed",
+                    "rate limit",
+                    "no documents have been indexed",
+                    "couldn't find relevant",
+                    "llm error",
+                ]
+                if any(p in answer.lower() for p in error_phrases):
+                    raise RuntimeError(f"LLM returned error response: {answer[:120]}")
+
+                succeeded_llm += 1
+                break
+
+            except Exception as exc:
+                llm_error = str(exc)
+                if attempt < 3:
+                    wait = attempt * 4
+                    print(f"         ⚠ Attempt {attempt} failed ({exc}). Retrying in {wait}s...")
+                    time.sleep(wait)
+                else:
+                    print("         ✗ All 3 attempts failed. Skipping LLM answer.")
+                    failed_llm += 1
+                    answer = ""
+
+        # ── Re-retrieve context for Context Relevance metric ──────────
+        # pipeline.query() doesn't return raw chunks directly.
+        # We call the retriever explicitly to get the text for metric computation.
         try:
-            response = pipeline.query(q, collection_name=collection_name)
-        except Exception as e:
-            print(f"         WARN Query failed: {e}")
-            results.append({
-                "id": qid,
-                "question": q,
-                "ground_truth": gt,
-                "answer": "",
-                "f1": {"precision": 0.0, "recall": 0.0, "f1": 0.0},
-                "key_fact_recall": 0.0,
-                "context_relevance": 0.0,
-                "faithfulness": -1,
-                "error": str(e),
-            })
-            time.sleep(5)
-            continue
+            from src.retrieval.hybrid_retriever import HybridRetriever
+            chunks = pipeline.all_chunks.get(collection_name, [])
+            retriever = HybridRetriever(embedder=pipeline.embedder, chunks=chunks)
+            retrieved_chunks = retriever.retrieve(
+                query=q,
+                collection_name=collection_name,
+            )
+            retrieved_texts = [r["text"] for r in retrieved_chunks]
+        except Exception as exc:
+            print(f"         ⚠ Retrieval error for metrics: {exc}")
+            retrieved_texts = []
 
-        answer = response.get("answer", "")
-        retrieved_texts = response.get("retrieved_texts", [])
-        faithfulness = response.get("faithfulness", {})
-        faith_score = faithfulness.get("score", -1) if isinstance(faithfulness, dict) else -1
-
-        f1 = compute_f1(answer, gt)
-        kfr = compute_key_fact_recall(answer, kf)
-        cr = compute_context_relevance(retrieved_texts, gt)
+        # ── Compute deterministic metrics ─────────────────────────────
+        f1  = compute_f1(answer, gt)                        if answer else {"precision": 0.0, "recall": 0.0, "f1": 0.0}
+        kfr = compute_key_fact_recall(answer, kf)           if answer else 0.0
+        cr  = compute_context_relevance(retrieved_texts, gt)
 
         results.append({
-            "id": qid,
-            "question": q,
-            "ground_truth": gt,
-            "answer": answer,
-            "f1": f1,
-            "key_fact_recall": kfr,
+            "id":               qid,
+            "question":         q,
+            "ground_truth":     gt,
+            "answer":           answer,
+            "llm_error":        llm_error,
+            "retrieved_count":  len(retrieved_texts),
+            "f1":               f1,
+            "key_fact_recall":  kfr,
             "context_relevance": cr,
-            "faithfulness": faith_score,
+            # Tier 2 — NOT evaluated
+            "faithfulness":     None,
+            "answer_relevancy": None,
         })
 
-        faith_display = f"{faith_score}" if faith_score >= 0 else "N/A"
-        print(f"         F1={f1['f1']:.2f}  Facts={kfr:.2f}  Ctx={cr:.2f}  Faith={faith_display}")
+        status = "✓" if not llm_error else "✗"
+        print(
+            f"         {status} P={f1['precision']:.2f}  R={f1['recall']:.2f}  "
+            f"F1={f1['f1']:.2f}  Facts={kfr:.2f}  Ctx={cr:.2f}"
+        )
 
-        # Delay between queries to avoid rate limiting
-        time.sleep(2)
+        # Rate-limit buffer between questions
+        time.sleep(3)
 
-    # ─── Aggregate Metrics ────────────────────────────────
+    # ── 5. Aggregate metrics ───────────────────────────────────────────────
     n = len(results)
-    f1_scores = [r["f1"]["f1"] for r in results]
-    kfr_scores = [r["key_fact_recall"] for r in results]
-    cr_scores = [r["context_relevance"] for r in results]
+    answered = [r for r in results if not r["llm_error"]]
 
-    avg_f1 = round(statistics.mean(f1_scores), 4) if f1_scores else 0
-    avg_precision = round(statistics.mean([r["f1"]["precision"] for r in results]), 4) if n else 0
-    avg_recall = round(statistics.mean([r["f1"]["recall"] for r in results]), 4) if n else 0
-    avg_kfr = round(statistics.mean(kfr_scores), 4) if kfr_scores else 0
-    avg_cr = round(statistics.mean(cr_scores), 4) if cr_scores else 0
+    def _mean(vals):
+        return round(statistics.mean(vals), 4) if vals else None
 
-    std_f1 = round(statistics.stdev(f1_scores), 4) if len(f1_scores) > 1 else 0.0
-    std_kfr = round(statistics.stdev(kfr_scores), 4) if len(kfr_scores) > 1 else 0.0
-    std_cr = round(statistics.stdev(cr_scores), 4) if len(cr_scores) > 1 else 0.0
+    def _std(vals):
+        return round(statistics.stdev(vals), 4) if len(vals) > 1 else 0.0
 
-    valid_faith = [r["faithfulness"] for r in results if r["faithfulness"] >= 0]
-    avg_faith = round(statistics.mean(valid_faith), 1) if valid_faith else -1
+    prec_vals = [r["f1"]["precision"]  for r in answered]
+    rec_vals  = [r["f1"]["recall"]     for r in answered]
+    f1_vals   = [r["f1"]["f1"]         for r in answered]
+    kfr_vals  = [r["key_fact_recall"]  for r in answered]
+    cr_vals   = [r["context_relevance"] for r in results]  # CR doesn't need LLM
 
-    # ─── Console Report ───────────────────────────────────
+    aggregate = {
+        "answer_precision":          _mean(prec_vals),
+        "answer_precision_std":      _std(prec_vals),
+        "answer_recall":             _mean(rec_vals),
+        "answer_recall_std":         _std(rec_vals),
+        "answer_f1":                 _mean(f1_vals),
+        "answer_f1_std":             _std(f1_vals),
+        "key_fact_recall":           _mean(kfr_vals),
+        "key_fact_recall_std":       _std(kfr_vals),
+        "context_relevance":         _mean(cr_vals),
+        "context_relevance_std":     _std(cr_vals),
+        # Tier 2 — explicitly marked as not evaluated
+        "faithfulness":              None,
+        "answer_relevancy":          None,
+    }
+
+    # ── 6. Console report ──────────────────────────────────────────────────
     print()
-    print("=" * 60)
+    print("=" * 64)
     print("  EVALUATION RESULTS")
-    print("=" * 60)
-    print(f"  Questions: {n}  |  Document: consulting_agreement.txt")
+    print("=" * 64)
+    print(f"  Total questions   : {n}")
+    print(f"  LLM answers OK    : {succeeded_llm}")
+    print(f"  LLM answers FAILED: {failed_llm}")
+    print(f"  Context Relevance samples: {n} (retrieval-only, always runs)")
     print()
-    print("  ---------------------------------------------")
-    print("  | Metric                |  Mean   |  StdDev |")
-    print("  ---------------------------------------------")
-    print(f"  | Answer F1             |  {avg_f1:.4f} |  {std_f1:.4f} |")
-    print(f"  | Key Fact Recall       |  {avg_kfr:.4f} |  {std_kfr:.4f} |")
-    print(f"  | Context Relevance     |  {avg_cr:.4f} |  {std_cr:.4f} |")
-    faith_str = f"{avg_faith:.0f}/100" if avg_faith >= 0 else "  N/A "
-    print(f"  | Faithfulness (LLM)    | {faith_str:>7s} |    -    |")
-    print("  ---------------------------------------------")
+    print("  ┌─────────────────────────┬──────────┬──────────┐")
+    print("  │ Metric                  │  Mean    │  StdDev  │")
+    print("  ├─────────────────────────┼──────────┼──────────┤")
+
+    def _fmt(v):
+        return f"{v:.4f}" if v is not None else "  N/A  "
+
+    print(f"  │ Answer Precision        │ {_fmt(aggregate['answer_precision'])} │ {_fmt(aggregate['answer_precision_std'])} │")
+    print(f"  │ Answer Recall           │ {_fmt(aggregate['answer_recall'])} │ {_fmt(aggregate['answer_recall_std'])} │")
+    print(f"  │ Answer F1               │ {_fmt(aggregate['answer_f1'])} │ {_fmt(aggregate['answer_f1_std'])} │")
+    print(f"  │ Key Fact Recall         │ {_fmt(aggregate['key_fact_recall'])} │ {_fmt(aggregate['key_fact_recall_std'])} │")
+    print(f"  │ Context Relevance       │ {_fmt(aggregate['context_relevance'])} │ {_fmt(aggregate['context_relevance_std'])} │")
+    print("  │ Faithfulness (LLM-J)    │   N/A — not evaluated          │")
+    print("  │ Answer Relevancy (LLM-J)│   N/A — not evaluated          │")
+    print("  └─────────────────────────┴──────────┴──────────┘")
+    print()
+    print("  Note: Precision/Recall/F1 are lexical token-overlap metrics,")
+    print("  not ROUGE/BLEU or embedding-based semantic similarity.")
     print()
 
     # Per-question breakdown
     print("  Per-Question Breakdown:")
     for r in results:
-        status = "[V]" if r["key_fact_recall"] >= 0.5 else "[X]"
+        st = "✓" if not r["llm_error"] else "✗"
         print(
-            f"    {status} {r['id']}: F1={r['f1']['f1']:.2f}  "
-            f"Facts={r['key_fact_recall']:.2f}  "
-            f"Ctx={r['context_relevance']:.2f}  "
-            f"| {r['question'][:50]}"
+            f"    [{st}] {r['id']}: "
+            f"F1={r['f1']['f1']:.2f}  Facts={r['key_fact_recall']:.2f}  "
+            f"Ctx={r['context_relevance']:.2f}  | {r['question'][:48]}"
         )
-    print("=" * 60)
+    print("=" * 64)
 
-    # ─── Save JSON Report ─────────────────────────────────
-    aggregate = {
-        "answer_f1": avg_f1,
-        "answer_f1_std": std_f1,
-        "answer_precision": avg_precision,
-        "answer_recall": avg_recall,
-        "key_fact_recall": avg_kfr,
-        "key_fact_recall_std": std_kfr,
-        "context_relevance": avg_cr,
-        "context_relevance_std": std_cr,
-        "faithfulness": avg_faith,
-    }
+    # ── 7. Save JSON artifact ──────────────────────────────────────────────
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    artifact_dir = os.path.join(project_root, "artifacts", "evaluation")
+    os.makedirs(artifact_dir, exist_ok=True)
+    artifact_path = os.path.join(artifact_dir, "rag_evaluation_results.json")
 
     report = {
-        "evaluation_date": time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "document": "consulting_agreement.txt",
-        "num_questions": n,
-        "aggregate_metrics": aggregate,
+        "schema_version":       "1.0",
+        "evaluation_timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "document":             collection_name,
+        "model_backend":        "HuggingFace / OpenRouter (free tier)",
+        "num_questions":        n,
+        "llm_answers_succeeded": succeeded_llm,
+        "llm_answers_failed":   failed_llm,
+        "metric_methodology": {
+            "answer_precision":   "lexical token-overlap set-intersection",
+            "answer_recall":      "lexical token-overlap set-intersection",
+            "answer_f1":          "harmonic mean of precision and recall",
+            "key_fact_recall":    "exact substring match on critical facts",
+            "context_relevance":  "token overlap between retrieved chunks and ground truth",
+            "faithfulness":       "NOT_EVALUATED — ragas not installed",
+            "answer_relevancy":   "NOT_EVALUATED — ragas not installed",
+        },
+        "aggregate_metrics":    aggregate,
         "per_question_results": results,
     }
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    report_path = os.path.join(script_dir, "evaluation_report.json")
-    with open(report_path, "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2, ensure_ascii=False)
-    print(f"\n  OK JSON report saved to {report_path}")
+    with open(artifact_path, "w", encoding="utf-8") as fh:
+        json.dump(report, fh, indent=2, ensure_ascii=False)
 
-    # ─── Generate Chart ───────────────────────────────────
-    chart_path = os.path.join(script_dir, "evaluation_chart.png")
-    generate_chart(aggregate, chart_path)
+    print(f"\n  ✓ JSON artifact saved to:\n    {artifact_path}\n")
 
-    # ─── Cleanup ──────────────────────────────────────────
+    # ── 8. Cleanup temp files ──────────────────────────────────────────────
     try:
         os.unlink(tmp_file)
         os.rmdir(tmp_dir)
     except OSError:
         pass
 
-    print(f"\n  Done. {n} questions evaluated.\n")
+    print(f"  Done. {n} questions evaluated ({succeeded_llm} answered, {failed_llm} failed).\n")
     return report
 
 

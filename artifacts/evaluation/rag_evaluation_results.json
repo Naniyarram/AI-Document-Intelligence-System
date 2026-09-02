@@ -1,0 +1,289 @@
+{
+  "schema_version": "1.0",
+  "evaluation_timestamp": "2026-09-02T17:56:03",
+  "document": "consulting_agreement.txt",
+  "model_backend": "HuggingFace / OpenRouter (free tier)",
+  "num_questions": 15,
+  "llm_answers_succeeded": 15,
+  "llm_answers_failed": 0,
+  "metric_methodology": {
+    "answer_precision": "lexical token-overlap set-intersection",
+    "answer_recall": "lexical token-overlap set-intersection",
+    "answer_f1": "harmonic mean of precision and recall",
+    "key_fact_recall": "exact substring match on critical facts",
+    "context_relevance": "token overlap between retrieved chunks and ground truth",
+    "faithfulness": "NOT_EVALUATED — ragas not installed",
+    "answer_relevancy": "NOT_EVALUATED — ragas not installed"
+  },
+  "aggregate_metrics": {
+    "answer_precision": 0.2837,
+    "answer_precision_std": 0.1444,
+    "answer_recall": 0.9438,
+    "answer_recall_std": 0.1371,
+    "answer_f1": 0.4174,
+    "answer_f1_std": 0.1786,
+    "key_fact_recall": 1.0,
+    "key_fact_recall_std": 0.0,
+    "context_relevance": 0.9589,
+    "context_relevance_std": 0.0866,
+    "faithfulness": null,
+    "answer_relevancy": null
+  },
+  "per_question_results": [
+    {
+      "id": "Q01",
+      "question": "What is the total fee amount for the consulting engagement?",
+      "ground_truth": "The total fee is $84,200.00.",
+      "answer": "The total fee amount for the consulting engagement is $84,200.00.\n\nSource: Page 5",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.4167,
+        "recall": 1.0,
+        "f1": 0.5882
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 0.8,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q02",
+      "question": "What are the three payment milestones?",
+      "ground_truth": "$25,000 upon execution, $30,000 at Day 45 interim report, $29,200 at final report.",
+      "answer": "The three payment milestones are:\n\n• $25,000 upon execution of this Agreement\n• $30,000 upon delivery of the interim report at Day 45\n• $29,200 upon delivery of the final report\n\nSource: Page 5",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.4783,
+        "recall": 1.0,
+        "f1": 0.6471
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 1.0,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q03",
+      "question": "Who are the two parties in this agreement?",
+      "ground_truth": "Acme Corporation and Jane Smith Consulting LLC.",
+      "answer": "The two parties in this agreement are:\n\n• Acme Corporation, a Delaware corporation with offices at 742 Evergreen Terrace, Springfield, IL 62704 (the \"Client\")\n• Jane Smith Consulting LLC, a California limited liability company (the \"Consultant\")\n\nSource: Page 1",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.1818,
+        "recall": 0.8571,
+        "f1": 0.3
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 1.0,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q04",
+      "question": "What is the late payment interest rate?",
+      "ground_truth": "1.5% per month.",
+      "answer": "The late payment interest rate is 1.5% per month.\n\nSource: Page 5",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.25,
+        "recall": 1.0,
+        "f1": 0.4
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 1.0,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q05",
+      "question": "How can the agreement be terminated early?",
+      "ground_truth": "Either party may terminate upon thirty days prior written notice.",
+      "answer": "The agreement can be terminated early by either party upon thirty (30) days' prior written notice to the other party.\n\nSource: Page 7",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.381,
+        "recall": 0.8,
+        "f1": 0.5161
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 1.0,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q06",
+      "question": "What happens to fees if the agreement is terminated early?",
+      "ground_truth": "The consultant is compensated for services performed up to termination on a pro-rata basis.",
+      "answer": "If the agreement is terminated early, the Consultant shall be compensated for all services performed up to the date of termination, calculated on a pro-rata basis.\n\nSource: Page 7",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.5185,
+        "recall": 1.0,
+        "f1": 0.6829
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 1.0,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q07",
+      "question": "What state's laws govern this agreement?",
+      "ground_truth": "The State of Delaware.",
+      "answer": "The laws of the State of Delaware govern this agreement.\n\nSource: Page 11",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.3636,
+        "recall": 1.0,
+        "f1": 0.5333
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 1.0,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q08",
+      "question": "How long does the confidentiality obligation last after termination?",
+      "ground_truth": "Two years after termination.",
+      "answer": "The confidentiality obligation lasts for a period of two (2) years after termination.\n\nSource: Page 9",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.25,
+        "recall": 1.0,
+        "f1": 0.4
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 0.75,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q09",
+      "question": "What is the total duration of the agreement?",
+      "ground_truth": "Six months from the effective date.",
+      "answer": "The total duration of the agreement is six (6) months, unless earlier terminated.\n\nSource: Page 7",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.2,
+        "recall": 0.5,
+        "f1": 0.2857
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 0.8333,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q10",
+      "question": "What services does the consultant provide?",
+      "ground_truth": "Strategic advisory services for digital transformation including technology assessment, roadmap development, vendor evaluation, and change management.",
+      "answer": "Grounded answer from the document:\n- The Consultant agrees to provide strategic advisory services related to digital transformation, including but not limited to: (a) assessment of current technology infrastructure; (b) development of a three-year technology roadmap; (c) vendor evaluation and selection support; and (d) change management recommendations. (consulting_agreement.txt p.3)\n- In the event of termination, the Consultant shall be compensated for all services performed up to the date of termination, calculated on a pro-rata basis. (consulting_agreement.txt p.7)\n- The Consultant shall deliver a comprehensive written report within 90 days of the Effective Date. (consulting_agreement.txt p.3)\nSource: consulting_agreement.txt p.3",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.2424,
+        "recall": 1.0,
+        "f1": 0.3902
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 1.0,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q11",
+      "question": "What is the invoice reference number?",
+      "ground_truth": "INV-2024-0341.",
+      "answer": "Grounded answer from the document:\n- Invoice Reference: INV-2024-0341 (consulting_agreement.txt p.13)\n- Contact: support@acme-corp.com | billing@janesmithconsulting.com (consulting_agreement.txt p.13)\n- Signed: Jane Smith, Managing Partner, Jane Smith Consulting LLC (consulting_agreement.txt p.13)\nSource: consulting_agreement.txt p.13",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.0476,
+        "recall": 1.0,
+        "f1": 0.0909
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 1.0,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q12",
+      "question": "Where will disputes be resolved?",
+      "ground_truth": "Through binding arbitration in Wilmington, Delaware.",
+      "answer": "Grounded answer from the document:\n- Any disputes arising under this Agreement shall be resolved through binding arbitration in Wilmington, Delaware. (consulting_agreement.txt p.11)\n- This Consulting Agreement (the 'Agreement') is entered into as of January 15, 2024, by and between Acme Corporation, a Delaware corporation with offices at 742 Evergreen Terrace, Springfield, IL 62704 ('Client'), and Jane Smith Consulting LLC, a California limited liability company ('Consultant'). (consulting_agreement.txt p.1)\n- This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware, without regard to its conflict of laws provisions. (consulting_agreement.txt p.11)\nSource: consulting_agreement.txt p.11",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.0882,
+        "recall": 1.0,
+        "f1": 0.1622
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 1.0,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q13",
+      "question": "When was the agreement signed?",
+      "ground_truth": "January 15, 2024.",
+      "answer": "The agreement was signed on the date first written above, which is January 15, 2024.\n\nSource: Page 12",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.1765,
+        "recall": 1.0,
+        "f1": 0.3
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 1.0,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q14",
+      "question": "What is Acme Corporation's address?",
+      "ground_truth": "742 Evergreen Terrace, Springfield, IL 62704.",
+      "answer": "Acme Corporation's address is 742 Evergreen Terrace, Springfield, IL 62704.\n\nSource: Page 1",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.4615,
+        "recall": 1.0,
+        "f1": 0.6316
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 1.0,
+      "faithfulness": null,
+      "answer_relevancy": null
+    },
+    {
+      "id": "Q15",
+      "question": "When must the final deliverable be submitted?",
+      "ground_truth": "Within 90 days of the effective date.",
+      "answer": "The final report must be delivered upon delivery of the final report, but the exact date is not specified in the provided context. However, it is mentioned that the Consultant shall deliver a comprehensive written report within 90 days of the Effective Date.\n\nSource: Page 3",
+      "llm_error": null,
+      "retrieved_count": 5,
+      "f1": {
+        "precision": 0.2,
+        "recall": 1.0,
+        "f1": 0.3333
+      },
+      "key_fact_recall": 1.0,
+      "context_relevance": 1.0,
+      "faithfulness": null,
+      "answer_relevancy": null
+    }
+  ]
+}

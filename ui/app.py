@@ -349,11 +349,12 @@ def render_main():
     )
 
     # Tabs
-    tab_qa, tab_extract, tab_anomaly, tab_pipeline = st.tabs([
+    tab_qa, tab_extract, tab_anomaly, tab_pipeline, tab_eval = st.tabs([
         "Q&A",
         "Extract",
         "Anomaly Review",
         "Pipeline View",
+        "📊 Evaluation",
     ])
 
     with tab_qa:
@@ -364,6 +365,8 @@ def render_main():
         render_anomaly_tab()
     with tab_pipeline:
         render_pipeline_tab()
+    with tab_eval:
+        render_evaluation_tab()
 
 
 def _show_welcome_screen():
@@ -792,6 +795,141 @@ def render_pipeline_tab():
             c2.metric("Dense Candidates", ret.get("dense_count",        0))
             c3.metric("Final (Reranked)",  ret.get("total_candidates",   0))
 
+
+# Entry Point for Evaluation Tab
+
+
+def render_evaluation_tab():
+    """
+    Display verified RAG evaluation results from the saved JSON artifact.
+
+    Loads: artifacts/evaluation/rag_evaluation_results.json
+    Falls back to a clear explanation if the file does not exist yet.
+    """
+    st.markdown("#### 📊 RAG Pipeline Evaluation Results")
+
+    import json
+    from pathlib import Path
+
+    artifact_path = Path(__file__).resolve().parent.parent / "artifacts" / "evaluation" / "rag_evaluation_results.json"
+
+    if not artifact_path.exists():
+        st.warning(
+            "**Evaluation results not found.**\n\n"
+            "To generate verified metrics, run the evaluation harness:\n"
+            "```bash\npython scripts/evaluate_rag.py\n```\n\n"
+            "This will create `artifacts/evaluation/rag_evaluation_results.json` "
+            "which this tab loads automatically."
+        )
+        return
+
+    try:
+        with open(artifact_path, "r", encoding="utf-8") as fh:
+            report = json.load(fh)
+    except Exception as exc:
+        st.error(f"Failed to load evaluation artifact: {exc}")
+        return
+
+    agg = report.get("aggregate_metrics", {})
+    meta = {
+        "evaluation_timestamp":  report.get("evaluation_timestamp", "—"),
+        "document":              report.get("document", "—"),
+        "num_questions":         report.get("num_questions", 0),
+        "llm_answers_succeeded": report.get("llm_answers_succeeded", 0),
+        "llm_answers_failed":    report.get("llm_answers_failed", 0),
+    }
+
+    # ── Evaluation metadata ───────────────────────────────────────────────
+    st.markdown(
+        f"<div class='info-card'>"
+        f"<strong style='color:#93C5FD;'>Evaluation Run</strong><br>"
+        f"<small style='color:#64748B;'>"
+        f"Timestamp: {meta['evaluation_timestamp']} &nbsp;|&nbsp; "
+        f"Document: {meta['document']} &nbsp;|&nbsp; "
+        f"Questions: {meta['num_questions']} &nbsp;|&nbsp; "
+        f"Answered: {meta['llm_answers_succeeded']} &nbsp;|&nbsp; "
+        f"Failed: {meta['llm_answers_failed']}"
+        f"</small></div>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("---")
+
+    def _pct(v):
+        if v is None:
+            return "N/A — not evaluated"
+        return f"{v * 100:.1f}%"
+
+    def _score(v):
+        if v is None:
+            return "N/A — not evaluated"
+        return f"{v:.4f}"
+
+    # ── Tier 1: Deterministic metrics ─────────────────────────────────────
+    st.markdown(
+        "<div style='color:#10B981; font-weight:600; margin-bottom:8px;'>"
+        "Tier 1 — Deterministic / Lexical Metrics</div>",
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Lexical token-overlap metrics (set-intersection). "
+        "Not equivalent to ROUGE/BLEU or embedding-based semantic evaluation."
+    )
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Answer Precision", _pct(agg.get("answer_precision")))
+    c2.metric("Answer Recall",    _pct(agg.get("answer_recall")))
+    c3.metric("Answer F1",        _pct(agg.get("answer_f1")))
+
+    c4, c5 = st.columns(2)
+    c4.metric("Key Fact Recall",   _pct(agg.get("key_fact_recall")))
+    c5.metric("Context Relevance", _pct(agg.get("context_relevance")))
+
+    st.markdown("---")
+
+    # ── Tier 2: LLM-as-a-Judge ────────────────────────────────────────────
+    st.markdown(
+        "<div style='color:#F59E0B; font-weight:600; margin-bottom:8px;'>"
+        "Tier 2 — LLM-as-a-Judge Metrics</div>",
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Requires `ragas` package (not installed) and consumes free-tier API quota. "
+        "Not evaluated in this run."
+    )
+
+    c6, c7 = st.columns(2)
+    c6.metric("Faithfulness",     _score(agg.get("faithfulness")))
+    c7.metric("Answer Relevancy", _score(agg.get("answer_relevancy")))
+
+    st.markdown("---")
+
+    # ── Per-question breakdown ────────────────────────────────────────────
+    with st.expander("Per-Question Breakdown", expanded=False):
+        per_q = report.get("per_question_results", [])
+        if per_q:
+            rows = []
+            for r in per_q:
+                rows.append({
+                    "ID":          r["id"],
+                    "Precision":   f"{r['f1']['precision']:.2f}",
+                    "Recall":      f"{r['f1']['recall']:.2f}",
+                    "F1":          f"{r['f1']['f1']:.2f}",
+                    "Key Facts":   f"{r['key_fact_recall']:.2f}",
+                    "Ctx Rel":     f"{r['context_relevance']:.2f}",
+                    "LLM Error":   "✗" if r.get("llm_error") else "✓",
+                    "Question":    r["question"][:60],
+                })
+            import pandas as pd
+            st.dataframe(pd.DataFrame(rows), use_container_width=True)
+        else:
+            st.caption("No per-question data found.")
+
+    # ── Metric methodology note ───────────────────────────────────────────
+    with st.expander("Metric Methodology", expanded=False):
+        methodology = report.get("metric_methodology", {})
+        for metric, desc in methodology.items():
+            st.markdown(f"**{metric}**: {desc}")
 
 
 # Entry Point
